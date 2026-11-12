@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 const acknowledgements = [
   { value: "received", label: "I received this alert" },
@@ -40,7 +40,7 @@ export function PublicAlertResponseForm({ token }: { token: string }) {
     }
   }
 
-  async function sendFeedback(event: React.FormEvent<HTMLFormElement>) {
+  async function sendFeedback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending("feedback");
     setStatus("");
