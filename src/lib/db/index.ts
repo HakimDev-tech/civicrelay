@@ -28,4 +28,11 @@ export function getDb(): Database {
   return globalForDb.__civicRelayDb ?? (globalForDb.__civicRelayDb = drizzle(pool, { schema }));
 }
 
+export async function closeDb(): Promise<void> {
+  const pool = globalForDb.__civicRelayPool;
+  if (pool) await pool.end();
+  delete globalForDb.__civicRelayPool;
+  delete globalForDb.__civicRelayDb;
+}
+
 export { schema };
