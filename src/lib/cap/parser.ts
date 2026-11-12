@@ -213,14 +213,15 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
 }
 
 function validateNamespace(xml: string, issues: CapIssue[]): boolean {
-  const match = /<((?:[A-Za-z_][\w.-]*:)?alert)\b([^>]*)>/.exec(xml);
+  const xmlWithoutComments = xml.replace(/<!--[\s\S]*?-->/g, "");
+  const match = /<((?:[A-Za-z_][\w.-]*:)?alert)\b([^>]*)>/.exec(xmlWithoutComments);
   if (!match) {
     issues.push({ code: "CAP_ROOT_MISSING", message: "The XML document must have a CAP alert root element.", path: "/", severity: "error" });
     return false;
   }
   const qualifiedName = match[1];
   const prefix = qualifiedName.includes(":") ? qualifiedName.split(":")[0] : null;
-  const attrName = prefix ? `xmlns:${prefix}` : "xmlns";
+  const attrName = prefix ? "xmlns:" + prefix.replaceAll(".", "\\.") : "xmlns";
   const namespaceMatch = new RegExp(`(?:^|\\s)${attrName.replace(":", "\\:")}\\s*=\\s*["']([^"']+)["']`).exec(match[2]);
   if (!namespaceMatch || namespaceMatch[1] !== CAP_NAMESPACE) {
     issues.push({
@@ -302,7 +303,7 @@ function parseArea(value: unknown, infoIndex: number, areaIndex: number, issues:
   });
 
   if (polygons.length === 0 && circles.length === 0 && geocodes.length === 0) {
-    issues.push({ code: "CAP_AREA_GEOMETRY_MISSING", message: "An area must contain at least one polygon, circle, or geocode.", path, severity: "warning" });
+    issues.push({ code: "CAP_AREA_GEOMETRY_MISSING", message: "An area must contain at least one polygon, circle, or geocode.", path, severity: "error" });
   }
 
   const parseOptionalNumber = (key: "altitude" | "ceiling"): number | null => {
@@ -328,7 +329,9 @@ function parseArea(value: unknown, infoIndex: number, areaIndex: number, issues:
 function parseResource(value: unknown, infoIndex: number, resourceIndex: number, issues: CapIssue[]): CapResource {
   const resource = asRecord(value);
   const description = childText(resource, "resourceDesc");
+  const mimeType = optionalText(resource.mimeType);
   if (!description) issues.push({ code: "CAP_REQUIRED_FIELD", message: "resourceDesc is required when a resource is present.", path: `/alert/info[${infoIndex}]/resource[${resourceIndex}]/resourceDesc`, severity: "error" });
+  if (!mimeType) issues.push({ code: "CAP_REQUIRED_FIELD", message: "mimeType is required when a resource is present.", path: `/alert/info[${infoIndex}]/resource[${resourceIndex}]/mimeType`, severity: "error" });
   const rawSize = optionalText(resource.size);
   let size: number | null = null;
   if (rawSize !== null) {
@@ -344,7 +347,7 @@ function parseResource(value: unknown, infoIndex: number, resourceIndex: number,
   }
   return {
     description,
-    mimeType: optionalText(resource.mimeType),
+    mimeType,
     size,
     uri: optionalText(resource.uri),
     dereferencedUri: optionalText(resource.derefUri),
