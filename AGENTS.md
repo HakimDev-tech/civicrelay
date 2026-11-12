@@ -41,3 +41,10 @@ CivicRelay transforms authoritative Common Alerting Protocol (CAP) messages into
 - Stream and bound untrusted request bodies before parsing. Validate content types and UTF-8 explicitly.
 - Public/API responses must not include stored source XML, full raw CAP payloads, secrets, or internal authorization data.
 - Keep database migrations additive. Never apply new migrations to Neon main without explicit user approval.
+
+## Organization invitation security
+- Only active organization owners/admins may issue invitations. Never permit invitation-based assignment of the owner role.
+- Invitation tokens must be cryptographically random, stored only as hashes, single-use, short-lived, and bound to the invitee's email.
+- Require an authenticated session with a verified email matching the invitation before activating membership.
+- Accept invitations transactionally; activate only the role stored in the invitation and record audit events.
+- Failed email delivery must invalidate the pending invitation. Do not expose invitation tokens in API responses or logs.
