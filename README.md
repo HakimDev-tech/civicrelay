@@ -168,7 +168,19 @@ All alert and alert-version queries are scoped to an organization. Alert version
 - A new account receives **no organization membership by default**. An authorized organization owner/admin must issue an invitation; the invited user must accept it with the matching verified email. Owner privileges cannot be assigned through invitations. Never accept user, organization, or membership IDs from the browser as proof of authorization.
 - Authentication tables are added by `drizzle/0004_authentication.sql`; shared API rate-limit storage is added by `drizzle/0005_api_rate_limits.sql`; organization invitations are added by `drizzle/0006_organization_invitations.sql`. These migrations are committed but have **not** been applied to Neon main.
 
-### Authentication environment variables
+### Initial organization provisioning
+
+CivicRelay does not let arbitrary sign-ups create operational emergency organizations or self-assign owner privileges. After verifying an organization's legitimacy through the appropriate offline process, an operator can provision its first owner using the guarded script:
+
+1. The designated owner first creates a CivicRelay account and verifies their email.
+2. Apply the approved authentication migration to the intended database.
+3. Set `DATABASE_URL_UNPOOLED`, `CIVICRELAY_ORG_NAME`, `CIVICRELAY_ORG_SLUG`, `CIVICRELAY_ORG_TYPE`, and `CIVICRELAY_OWNER_EMAIL` in the operator's private environment.
+4. Set `CIVICRELAY_PROVISION_CONFIRMATION=PROVISION_VERIFIED_ORGANIZATION` only after organization verification and explicit operator approval.
+5. Run `pnpm org:provision`.
+
+The script uses the direct database connection, requires an already verified user, creates the organization and its first active owner membership in one transaction, and records an audit event. It never creates user accounts, grants owner access through a public API, or prints database credentials. Do not run it against Neon main until migrations and organization verification have been explicitly approved.
+
+## Authentication environment variables
 
 See `.env.example`. Keep all values in encrypted Vercel environment variables or `.env.local`; never commit real credentials.
 
