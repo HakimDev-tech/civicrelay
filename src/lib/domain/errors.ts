@@ -3,7 +3,7 @@ export type DomainErrorCode =
   | "NOT_FOUND"
   | "FORBIDDEN"
   | "CONFLICT"
-  | "INVARIANT_VIOLATION";
+  | "INVARIANT_VIOLATION"\n  | "RATE_LIMITED";
 
 export class DomainError extends Error {
   constructor(
