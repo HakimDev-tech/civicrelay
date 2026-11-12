@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check migration and provisioning scripts syntax
+        run: |
+          node --check scripts/migrate.mjs
+          node --check scripts/provision-organization.mjs
+      - name: Lint, typecheck, tests, and migration journal
+        run: pnpm check
+      - name: Build
+        run: pnpm build
+
+  database-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civicrelay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d civicrelay"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/civicrelay
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/civicrelay
+      CIVICRELAY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/civicrelay
+      CIVICRELAY_TEST_DATABASE_CONFIRMATION: ISOLATED_BRANCH
+      BETTER_AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
+      BETTER_AUTH_URL: http://localhost:3000
+      RESEND_API_KEY: re_test_only
+      AUTH_EMAIL_FROM: "CivicRelay CI <no-reply@example.test>"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply all migrations to ephemeral PostgreSQL
+        run: pnpm db:migrate
+      - name: Run database-backed integration tests
+        run: pnpm test

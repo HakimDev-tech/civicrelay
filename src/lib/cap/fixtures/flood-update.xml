@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>flood-002</identifier>
+  <sender>alerts@example.dz</sender>
+  <sent>2026-11-12T10:15:00+01:00</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <references>alerts@example.dz,flood-001,2026-11-12T09:30:00+01:00</references>
+  <info>
+    <language>fr-FR</language>
+    <category>Met</category>
+    <event>Inondation</event>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Observed</certainty>
+    <headline>Mise à jour — risque de crue</headline>
+    <description>La zone touchée s'étend vers le secteur nord.</description>
+    <instruction>Évitez également le secteur nord et suivez les consignes des autorités.</instruction>
+    <area>
+      <areaDesc>Secteur nord</areaDesc>
+      <geocode><valueName>POSTAL</valueName><value>15001</value></geocode>
+    </area>
+  </info>
+</alert>

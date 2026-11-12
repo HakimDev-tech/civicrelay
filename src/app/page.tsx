@@ -1,16 +1,23 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-8 sm:px-10 lg:px-12">
       <header className="flex items-center justify-between border-b border-border pb-6">
-        <a aria-label="CivicRelay home" className="flex items-center gap-3" href="/">
+        <Link aria-label="CivicRelay home" className="flex items-center gap-3" href="/">
           <span className="flex size-10 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white">
             C
           </span>
           <span className="text-lg font-semibold tracking-tight">CivicRelay</span>
-        </a>
-        <span className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted">
-          Foundation build
-        </span>
+        </Link>
+        <nav aria-label="Account navigation" className="flex items-center gap-3">
+          <Link className="text-sm font-semibold text-muted transition hover:text-brand" href="/sign-in">
+            Sign in
+          </Link>
+          <Link className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong" href="/sign-up">
+            Create account
+          </Link>
+        </nav>
       </header>
 
       <section className="grid flex-1 content-center gap-8 py-20 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">

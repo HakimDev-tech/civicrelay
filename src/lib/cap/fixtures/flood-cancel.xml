@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>flood-003</identifier>
+  <sender>alerts@example.dz</sender>
+  <sent>2026-11-12T10:45:00+01:00</sent>
+  <status>Actual</status>
+  <msgType>Cancel</msgType>
+  <scope>Public</scope>
+  <references>alerts@example.dz,flood-002,2026-11-12T10:15:00+01:00</references>
+</alert>
