@@ -1,0 +1,17 @@
+/node_modules
+/.pnp
+.pnp.*
+/coverage
+/.next/
+/out/
+/build
+.env
+.env.*
+!.env.example
+.vercel
+*.tsbuildinfo
+.DS_Store
+*.pem
+.idea/
+.vscode/*
+!.vscode/extensions.json
