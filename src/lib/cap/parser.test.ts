@@ -49,7 +49,7 @@ describe("parseCapXml", () => {
   it("accepts a prefixed CAP namespace", () => {
     const source = '<cap:alert xmlns:cap="' + namespace + '">' +
       "<cap:identifier>x</cap:identifier><cap:sender>s</cap:sender>" +
-      "<cap:sent>2026-11-12T09:30:00Z</cap:sent><cap:status>Actual</cap:status>" +
+      "<cap:sent>2026-11-12T09:30:00+00:00</cap:sent><cap:status>Actual</cap:status>" +
       "<cap:msgType>Alert</cap:msgType><cap:scope>Public</cap:scope></cap:alert>";
     expect(parseCapXml(source).success).toBe(true);
   });
@@ -62,7 +62,7 @@ describe("parseCapXml", () => {
 
   it("accepts Cancel without info when it references an earlier message", () => {
     const source = xml("").replace("<msgType>Alert</msgType>", "<msgType>Cancel</msgType>")
-      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-11-12T08:30:00Z</references>");
+      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-11-12T08:30:00+00:00</references>");
     expect(parseCapXml(source).success).toBe(true);
   });
 
@@ -136,7 +136,7 @@ describe("parseCapXml", () => {
   it("validates timestamps inside CAP references", () => {
     const source = xml(info())
       .replace("<msgType>Alert</msgType>", "<msgType>Update</msgType>")
-      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-02-31T08:30:00Z</references>");
+      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-02-31T08:30:00+00:00</references>");
     const result = parseCapXml(source);
     expect(result.success).toBe(false);
     if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
@@ -154,12 +154,12 @@ describe("parseCapXml", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects an area that has no polygon, circle, or geocode", () => {
+  it("accepts descriptive-only areas and warns when machine-readable geometry is absent", () => {
     const source = xml(info().replace("<polygon>36.70,4.05 36.71,4.05 36.71,4.06 36.70,4.05</polygon>", ""))
       .replace("<geocode><valueName>POSTAL</valueName><value>15000</value></geocode>", "");
     const result = parseCapXml(source);
-    expect(result.success).toBe(false);
-    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_AREA_GEOMETRY_MISSING")).toBe(true);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.issues.some((issue) => issue.code === "CAP_AREA_GEOMETRY_MISSING" && issue.severity === "warning")).toBe(true);
   });
 
   it("requires mimeType on CAP resources", () => {
