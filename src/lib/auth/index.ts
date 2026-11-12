@@ -10,7 +10,8 @@ const trustedOrigins = [
   process.env.NEXT_PUBLIC_APP_URL,
 ].filter((origin): origin is string => Boolean(origin));
 
-export const auth = betterAuth({
+function createAuth() {
+  return betterAuth({
   appName: "CivicRelay",
   ...(process.env.BETTER_AUTH_SECRET
     ? { secret: process.env.BETTER_AUTH_SECRET }
@@ -83,4 +84,14 @@ export const auth = betterAuth({
   },
 });
 
-export type AuthSession = typeof auth.$Infer.Session;
+}
+
+type AuthInstance = ReturnType<typeof createAuth>;
+type AuthGlobal = typeof globalThis & { __civicRelayAuth?: AuthInstance };
+const authGlobal = globalThis as AuthGlobal;
+
+export function getAuth(): AuthInstance {
+  return authGlobal.__civicRelayAuth ?? (authGlobal.__civicRelayAuth = createAuth());
+}
+
+export type AuthSession = AuthInstance["$Infer"]["Session"];
