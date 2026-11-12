@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Check migration runner syntax
         run: node --check scripts/migrate.mjs
-      - name: Lint and typecheck
+      - name: Lint, typecheck, tests, and migration journal
         run: pnpm check
       - name: Build
         run: pnpm build
