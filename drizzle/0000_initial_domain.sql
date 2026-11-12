@@ -21,8 +21,7 @@ CREATE TABLE organizations (
   type organization_type NOT NULL DEFAULT 'other',
   status organization_status NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (id)
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE users (
