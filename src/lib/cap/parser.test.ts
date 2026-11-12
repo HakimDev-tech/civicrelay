@@ -49,7 +49,7 @@ describe("parseCapXml", () => {
   it("accepts a prefixed CAP namespace", () => {
     const source = '<cap:alert xmlns:cap="' + namespace + '">' +
       "<cap:identifier>x</cap:identifier><cap:sender>s</cap:sender>" +
-      "<cap:sent>2026-11-12T09:30:00+00:00</cap:sent><cap:status>Actual</cap:status>" +
+      "<cap:sent>2026-11-12T09:30:00-00:00</cap:sent><cap:status>Actual</cap:status>" +
       "<cap:msgType>Alert</cap:msgType><cap:scope>Public</cap:scope></cap:alert>";
     expect(parseCapXml(source).success).toBe(true);
   });
@@ -62,7 +62,7 @@ describe("parseCapXml", () => {
 
   it("accepts Cancel without info when it references an earlier message", () => {
     const source = xml("").replace("<msgType>Alert</msgType>", "<msgType>Cancel</msgType>")
-      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-11-12T08:30:00+00:00</references>");
+      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-11-12T08:30:00-00:00</references>");
     expect(parseCapXml(source).success).toBe(true);
   });
 
@@ -136,7 +136,7 @@ describe("parseCapXml", () => {
   it("validates timestamps inside CAP references", () => {
     const source = xml(info())
       .replace("<msgType>Alert</msgType>", "<msgType>Update</msgType>")
-      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-02-31T08:30:00+00:00</references>");
+      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-02-31T08:30:00-00:00</references>");
     const result = parseCapXml(source);
     expect(result.success).toBe(false);
     if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
