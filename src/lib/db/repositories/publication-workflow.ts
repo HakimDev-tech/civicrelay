@@ -92,6 +92,35 @@ export async function approveAlertVersion(input: {
   });
 }
 
+export async function getLatestApprovalForVersion(input: {
+  organizationId: string;
+  membershipId: string;
+  alertVersionId: string;
+}) {
+  const organizationId = idSchema.parse(input.organizationId);
+  const membershipId = idSchema.parse(input.membershipId);
+  const alertVersionId = idSchema.parse(input.alertVersionId);
+
+  await requireActiveMembership({ organizationId, membershipId });
+
+  const [approval] = await getDb()
+    .select({
+      id: alertApprovals.id,
+      decision: alertApprovals.decision,
+      reviewerMembershipId: alertApprovals.reviewerMembershipId,
+      createdAt: alertApprovals.createdAt,
+    })
+    .from(alertApprovals)
+    .where(and(
+      eq(alertApprovals.organizationId, organizationId),
+      eq(alertApprovals.alertVersionId, alertVersionId),
+    ))
+    .orderBy(desc(alertApprovals.createdAt), desc(alertApprovals.id))
+    .limit(1);
+
+  return approval ?? null;
+}
+
 export async function publishAlertVersion(input: {
   organizationId: string;
   membershipId: string;
