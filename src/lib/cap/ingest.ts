@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parseCapXml, type NormalizedCapAlert } from "@/lib/cap/parser";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
+import { requireActiveMembership } from "@/lib/db/repositories/access";
 import {
   alertAreas,
   alertVersions,
@@ -74,6 +75,13 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
   issues: ReturnType<typeof parseCapXml> extends infer R ? R extends { issues: infer I } ? I : never : never;
 }> {
   const request = inputSchema.parse(input);
+
+  // Reject unauthorized callers before spending CPU on XML parsing; the transaction rechecks and locks the actor.
+  await requireActiveMembership({
+    organizationId: request.organizationId,
+    membershipId: request.membershipId,
+    allowedRoles: editorRoles,
+  });
 
   const parsed = parseCapXml(request.xml, { requirePublicScope: true });
   if (!parsed.success) {
