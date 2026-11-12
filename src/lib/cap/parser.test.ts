@@ -72,11 +72,21 @@ describe("parseCapXml", () => {
     if (!result.success) expect(result.issues[0].code).toBe("CAP_XML_MALFORMED");
   });
 
-  it("rejects a wrong namespace", () => {
-    const result = parseCapXml(xml(info(), 'xmlns="urn:wrong"'));
+  it("enforces the normative CAP XML element sequence with the XSD", () => {
+    const source = xml(info()).replace(
+      "<identifier>flood-001</identifier><sender>alerts@example.dz</sender>",
+      "<sender>alerts@example.dz</sender><identifier>flood-001</identifier>",
+    );
+    const result = parseCapXml(source);
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_NAMESPACE_INVALID")).toBe(true);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_XSD_VALIDATION_FAILED")).toBe(true);
   });
+
+    it("rejects a wrong namespace", () => {
+      const result = parseCapXml(xml(info(), 'xmlns="urn:wrong"'));
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_NAMESPACE_INVALID")).toBe(true);
+    });
 
   it("rejects DTD and custom entity declarations", () => {
     const source = '<!DOCTYPE alert [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>' + xml(info());
