@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
@@ -56,9 +56,11 @@ export async function approveAlertVersion(input: {
         eq(alertVersions.id, alertVersionId),
         eq(alertVersions.organizationId, organizationId),
       ))
+      .for("update")
       .limit(1);
 
     if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${version.alertId}))`);
     if (version.capMessageType === "Cancel" || version.alertStatus === "cancelled" || version.alertStatus === "expired") {
       throw new DomainError("INVARIANT_VIOLATION", "Cancelled or expired alert versions cannot be approved.");
     }
@@ -180,9 +182,11 @@ export async function publishAlertVersion(input: {
           eq(alertVersions.id, alertVersionId),
           eq(alertVersions.organizationId, organizationId),
         ))
+        .for("update")
         .limit(1);
 
       if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${version.alertId}))`);
       if (version.organizationStatus !== "active") {
         throw new DomainError("FORBIDDEN", "Suspended organizations cannot publish alerts.");
       }
