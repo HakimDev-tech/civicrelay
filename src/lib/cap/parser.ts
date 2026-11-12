@@ -500,6 +500,18 @@ export function parseCapXml(xml: string, options: ParseCapOptions = {}): CapPars
     return { success: false, issues: [{ code: "CAP_PAYLOAD_TOO_LARGE", message: `CAP XML is ${byteLength} bytes; configured maximum is ${maxBytes} bytes.`, path: "/", severity: "error" }] };
   }
 
+  const declaration = /^\uFEFF?\s*<\?xml\s+([^?]+)\?>/i.exec(xml)?.[1];
+  if (declaration) {
+    const version = /\bversion\s*=\s*(['"])(.*?)\1/i.exec(declaration)?.[2];
+    const encoding = /\bencoding\s*=\s*(['"])(.*?)\1/i.exec(declaration)?.[2];
+    if (version && version !== "1.0") {
+      return { success: false, issues: [{ code: "CAP_XML_VERSION_UNSUPPORTED", message: "CAP XML must use XML 1.0.", path: "/", severity: "error" }] };
+    }
+    if (encoding && !/^utf-?8$/i.test(encoding)) {
+      return { success: false, issues: [{ code: "CAP_XML_ENCODING_UNSUPPORTED", message: "CAP XML must be supplied as UTF-8 text.", path: "/", severity: "error" }] };
+    }
+  }
+
   // DTDs and custom entities are not needed by CAP and create entity-expansion / XXE risk.
   if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(xml)) {
     return { success: false, issues: [{ code: "CAP_DTD_FORBIDDEN", message: "DOCTYPE and custom entity declarations are forbidden.", path: "/", severity: "error" }] };
