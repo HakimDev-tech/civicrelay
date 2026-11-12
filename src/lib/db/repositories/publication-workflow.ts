@@ -6,6 +6,7 @@ import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
 import {
   alertApprovals,
+  auditLogs,
   alertVersions,
   alerts,
   feedback,
@@ -82,11 +83,18 @@ export async function approveAlertVersion(input: {
       comment: comment ?? null,
     }).returning();
 
-    if (input.decision === "approved") {
-      await tx.update(alerts)
-        .set({ status: input.decision === "approved" ? "approved" : "in_review", updatedAt: new Date() })
-        .where(and(eq(alerts.id, version.alertId), eq(alerts.organizationId, organizationId)));
-    }
+    await tx.update(alerts)
+      .set({ status: input.decision === "approved" ? "approved" : "in_review", updatedAt: new Date() })
+      .where(and(eq(alerts.id, version.alertId), eq(alerts.organizationId, organizationId)));
+
+    await tx.insert(auditLogs).values({
+      organizationId,
+      actorMembershipId: membershipId,
+      action: input.decision === "approved" ? "alert.version_approved" : "alert.version_rejected",
+      entityType: "alert_version",
+      entityId: alertVersionId,
+      metadata: { approvalId: approval.id, decision: input.decision, comment: comment ?? null },
+    });
 
     return approval;
   });
@@ -223,6 +231,15 @@ export async function publishAlertVersion(input: {
       await tx.update(alerts)
         .set({ status: "published", updatedAt: new Date() })
         .where(and(eq(alerts.id, version.alertId), eq(alerts.organizationId, organizationId)));
+
+      await tx.insert(auditLogs).values({
+        organizationId,
+        actorMembershipId: membershipId,
+        action: "alert.version_published",
+        entityType: "alert_version",
+        entityId: alertVersionId,
+        metadata: { publicationId: link.id, approvalId, versionNumber: version.versionNumber },
+      });
 
       return link;
     });
