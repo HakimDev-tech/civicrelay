@@ -48,3 +48,11 @@ CREATE TABLE auth_verifications (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX auth_verifications_identifier_idx ON auth_verifications(identifier);
+
+-- Shared rate-limit storage keeps abuse controls consistent across serverless instances.
+CREATE TABLE auth_rate_limits (
+  id uuid PRIMARY KEY,
+  key text NOT NULL UNIQUE,
+  count integer NOT NULL,
+  last_request bigint NOT NULL
+);
