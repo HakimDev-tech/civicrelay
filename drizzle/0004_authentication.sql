@@ -10,7 +10,7 @@ ALTER TABLE users
 CREATE UNIQUE INDEX users_email_uidx ON users (email);
 
 CREATE TABLE auth_sessions (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   expires_at timestamptz NOT NULL,
   token text NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -22,7 +22,7 @@ CREATE TABLE auth_sessions (
 CREATE INDEX auth_sessions_user_id_idx ON auth_sessions(user_id);
 
 CREATE TABLE auth_accounts (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id text NOT NULL,
   provider_id text NOT NULL,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -40,7 +40,7 @@ CREATE TABLE auth_accounts (
 CREATE INDEX auth_accounts_user_id_idx ON auth_accounts(user_id);
 
 CREATE TABLE auth_verifications (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   identifier text NOT NULL,
   value text NOT NULL,
   expires_at timestamptz NOT NULL,
