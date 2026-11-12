@@ -185,7 +185,7 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
     return null;
   }
   // CAP timestamps must be unambiguous RFC 3339 date-times with an explicit UTC offset.
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(raw);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([+-])(\d{2}):(\d{2})$/.exec(raw);
   if (!match) {
     issues.push({ code: "CAP_DATETIME_INVALID", message: "Expected an ISO 8601 date-time with seconds and an explicit timezone.", path, severity: "error" });
     return null;
