@@ -33,7 +33,7 @@ function createAuth() {
         session: schema.authSessions,
         account: schema.authAccounts,
         verification: schema.authVerifications,
-        rateLimit: schema.authRateLimits,
+        auth_rate_limits: schema.authRateLimits,
       },
     }),
     user: {
