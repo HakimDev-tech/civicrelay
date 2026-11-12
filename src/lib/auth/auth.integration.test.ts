@@ -14,10 +14,10 @@ integration("Better Auth email lifecycle (isolated PostgreSQL database)", () => 
   const email = `auth-${randomUUID()}@example.invalid`;
   const password = "CivicRelay-Test-Password-2026!";
   const sentEmails: string[] = [];
-  const handlers = toNextJsHandler(getAuth());
 
   beforeAll(() => {
     if (!databaseUrl) throw new Error("CIVICRELAY_TEST_DATABASE_URL is required.");
+    process.env.DATABASE_URL = databaseUrl;
     if (process.env.NODE_ENV === "production") throw new Error("Auth integration tests must never run in production.");
     if (process.env.CIVICRELAY_TEST_DATABASE_CONFIRMATION !== "ISOLATED_BRANCH") {
       throw new Error("Auth integration tests require explicit isolated-database confirmation.");
@@ -40,6 +40,7 @@ integration("Better Auth email lifecycle (isolated PostgreSQL database)", () => 
   });
 
   it("signs up, verifies the email, signs in, and resolves the authenticated session", async () => {
+    const handlers = toNextJsHandler(getAuth());
     const signUpResponse = await handlers.POST(new Request(`${origin}/api/auth/sign-up/email`, {
       method: "POST",
       headers: {
