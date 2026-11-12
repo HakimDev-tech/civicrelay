@@ -51,3 +51,23 @@ export function passwordResetEmailText(url: string): string {
     "If you did not request a password reset, you can ignore this message.",
   ].join("\n");
 }
+
+export function organizationInvitationEmailText(input: {
+  organizationName: string;
+  role: string;
+  url: string;
+  expiresAt: Date;
+}): string {
+  return [
+    "You have been invited to CivicRelay",
+    "",
+    `Organization: ${input.organizationName}`,
+    `Assigned role: ${input.role}`,
+    `Invitation expires: ${input.expiresAt.toISOString()}`,
+    "",
+    "Sign in or create an account using the invited email address, verify that address, then accept the invitation:",
+    input.url,
+    "",
+    "If you were not expecting this invitation, you can ignore this message.",
+  ].join("\n");
+}
