@@ -26,7 +26,6 @@ describe("parseCapXml", () => {
   it("parses CAP 1.2 and produces a stable repository projection", () => {
     const source = xml(info());
     const result = parseCapXml(source);
-    if (!result.success) console.error("CAP validation diagnostics:", result.issues);
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.data.identifier).toBe("flood-001");
