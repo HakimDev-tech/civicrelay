@@ -27,6 +27,7 @@ function createAuth() {
       session: schema.authSessions,
       account: schema.authAccounts,
       verification: schema.authVerifications,
+      rateLimit: schema.authRateLimits,
     },
   }),
   user: {
@@ -69,8 +70,16 @@ function createAuth() {
   },
   rateLimit: {
     enabled: true,
+    storage: "database",
+    modelName: "auth_rate_limits",
     window: 60,
     max: 10,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+      "/forget-password": { window: 60, max: 3 },
+      "/send-verification-email": { window: 60, max: 3 },
+    },
   },
   advanced: {
     database: {
