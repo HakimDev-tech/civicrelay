@@ -25,13 +25,13 @@ CivicRelay is a human-in-the-loop emergency communication platform. It takes aut
 ## Requirements
 
 - Node.js 20.9+
-- npm 10+ or a compatible package manager
+- pnpm 10+
 
-## Local development
+## Local development (Git Bash)
 
-    npm install
+    pnpm install
     cp .env.example .env.local
-    npm run dev
+    pnpm dev
 
 Open http://localhost:3000.
 
@@ -63,9 +63,8 @@ Open Drizzle Studio with:
 
 ## Quality checks
 
-    npm run lint
-    npm run typecheck
-    npm run build
+    pnpm check
+    pnpm build
 
 ## Project structure
 
