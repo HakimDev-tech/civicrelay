@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
@@ -39,7 +39,7 @@ export async function approveAlertVersion(input: {
 
   return getDb().transaction(async (tx) => {
     const [version] = await tx
-      .select({ id: alertVersions.id, alertId: alertVersions.alertId })
+      .select({ id: alertVersions.id, alertId: alertVersions.alertId, versionNumber: alertVersions.versionNumber })
       .from(alertVersions)
       .where(and(
         eq(alertVersions.id, alertVersionId),
@@ -48,6 +48,15 @@ export async function approveAlertVersion(input: {
       .limit(1);
 
     if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
+    const [latestVersion] = await tx
+      .select({ id: alertVersions.id })
+      .from(alertVersions)
+      .where(eq(alertVersions.alertId, version.alertId))
+      .orderBy(desc(alertVersions.versionNumber))
+      .limit(1);
+    if (latestVersion?.id !== version.id) {
+      throw new DomainError("CONFLICT", "Only the latest alert version can be reviewed.");
+    }
 
     const [approval] = await tx.insert(alertApprovals).values({
       organizationId,
@@ -101,13 +110,17 @@ export async function publishAlertVersion(input: {
         .select({
           id: alertVersions.id,
           alertId: alertVersions.alertId,
+          versionNumber: alertVersions.versionNumber,
+          capStatus: alertVersions.capStatus,
           alertStatus: alerts.status,
+          organizationStatus: organizations.status,
         })
         .from(alertVersions)
         .innerJoin(alerts, and(
           eq(alerts.id, alertVersions.alertId),
           eq(alerts.organizationId, alertVersions.organizationId),
         ))
+        .innerJoin(organizations, eq(organizations.id, alertVersions.organizationId))
         .where(and(
           eq(alertVersions.id, alertVersionId),
           eq(alertVersions.organizationId, organizationId),
@@ -115,8 +128,35 @@ export async function publishAlertVersion(input: {
         .limit(1);
 
       if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
-      if (version.alertStatus === "cancelled" || version.alertStatus === "expired") {
-        throw new DomainError("INVARIANT_VIOLATION", "Cancelled or expired alerts cannot be published.");
+      if (version.organizationStatus !== "active") {
+        throw new DomainError("FORBIDDEN", "Suspended organizations cannot publish alerts.");
+      }
+      if (version.capStatus !== "Actual") {
+        throw new DomainError("INVARIANT_VIOLATION", "Only CAP messages with status Actual may be published publicly.");
+      }
+      if (version.alertStatus !== "approved" && version.alertStatus !== "published") {
+        throw new DomainError("INVARIANT_VIOLATION", "The alert must be approved before publication.");
+      }
+      const [latestVersion] = await tx
+        .select({ id: alertVersions.id })
+        .from(alertVersions)
+        .where(eq(alertVersions.alertId, version.alertId))
+        .orderBy(desc(alertVersions.versionNumber))
+        .limit(1);
+      if (latestVersion?.id !== version.id) {
+        throw new DomainError("CONFLICT", "Only the latest alert version can be published.");
+      }
+      const [latestApproval] = await tx
+        .select({ id: alertApprovals.id, decision: alertApprovals.decision })
+        .from(alertApprovals)
+        .where(and(
+          eq(alertApprovals.alertVersionId, alertVersionId),
+          eq(alertApprovals.organizationId, organizationId),
+        ))
+        .orderBy(desc(alertApprovals.createdAt), desc(alertApprovals.id))
+        .limit(1);
+      if (!latestApproval || latestApproval.id !== approvalId || latestApproval.decision !== "approved") {
+        throw new DomainError("FORBIDDEN", "Publication requires the latest approval decision for this exact version.");
       }
 
       const [link] = await tx.insert(publicationLinks).values({
@@ -209,8 +249,9 @@ export async function getPublicAlertByToken(token: string) {
       eq(publicationLinks.status, "active"),
       or(isNull(publicationLinks.expiresAt), gt(publicationLinks.expiresAt, now)),
       or(isNull(alerts.expiresAt), gt(alerts.expiresAt, now)),
-      ne(alerts.status, "cancelled"),
-      ne(alerts.status, "expired"),
+      eq(alerts.status, "published"),
+      eq(alertVersions.capStatus, "Actual"),
+      eq(organizations.status, "active")
     ))
     .limit(1);
 
