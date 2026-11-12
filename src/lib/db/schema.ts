@@ -264,6 +264,7 @@ export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Membership = typeof memberships.$inferSelect;
+export type MembershipRole = typeof membershipRoleEnum.enumValues[number];
 export type Alert = typeof alerts.$inferSelect;
 export type NewAlert = typeof alerts.$inferInsert;
 export type AlertVersion = typeof alertVersions.$inferSelect;
