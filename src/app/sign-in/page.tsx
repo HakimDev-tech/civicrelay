@@ -13,7 +13,7 @@ function safeCallbackURL(value?: string): string {
   try {
     const parsed = new URL(value, "https://civicrelay.invalid");
     return parsed.origin === "https://civicrelay.invalid"
-      ? \`\${parsed.pathname}\${parsed.search}\${parsed.hash}\`
+      ? parsed.pathname + parsed.search + parsed.hash
       : "/dashboard";
   } catch {
     return "/dashboard";
