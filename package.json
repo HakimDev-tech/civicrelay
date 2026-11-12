@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run src/lib/cap/ingest.integration.test.ts",
-    "db:check": "node scripts/check-migrations.mjs"
+    "db:check": "node scripts/check-migrations.mjs",
+    "org:provision": "node scripts/provision-organization.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.7",
