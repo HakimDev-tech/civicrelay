@@ -24,3 +24,12 @@ CivicRelay transforms authoritative Common Alerting Protocol (CAP) messages into
 - Add tests for domain rules, parser edge cases, authorization, and state transitions.
 - Keep accessibility, keyboard navigation, and mobile layouts first-class requirements.
 - Run npm run check and npm run build before considering a change complete.
+
+## Authentication and authorization
+- Use Better Auth for identity, email verification, password credentials, and session resolution. Do not introduce a second identity provider without an explicit architecture decision.
+- Resolve the current user from a verified server-side Better Auth session. Never trust user IDs, organization IDs, or membership IDs supplied by the browser as proof of identity or authorization.
+- Every organization-scoped operation must resolve an active membership for the authenticated user and an active organization. Enforce role allow-lists server-side.
+- Account creation does not grant organization membership or operational permissions. Never allow a user to self-assign an organization or role.
+- Keep email verification mandatory. Registration must fail closed if the transactional email provider is not configured.
+- Rate limiting must use shared storage suitable for serverless instances.
+- Do not apply `drizzle/0004_authentication.sql` to Neon main without explicit user approval. Validate schema changes against an isolated database first.
