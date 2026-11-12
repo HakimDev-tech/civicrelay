@@ -93,7 +93,7 @@ export async function createOrganizationInvitation(input: {
         email,
         role,
         tokenHash,
-        invitedByMembershipId,
+        invitedByMembershipId: inviterMembershipId,
         expiresAt,
       }).returning({
         id: organizationInvitations.id,
