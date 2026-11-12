@@ -114,6 +114,10 @@ The server-side CAP module is under `src/lib/cap/`:
 - Organization owners/admins can issue invitations through `POST /api/organizations/:organizationId/invitations`; invitation tokens are random, single-use, stored only as SHA-256 hashes, and expire after seven days.
 - Invitees must sign in with the invited email, verify that address, and accept through `POST /api/invitations/accept`. The acceptance transaction activates only the assigned non-owner role and records an audit event. Invitation delivery failure revokes the pending invitation.
 - The dashboard exposes the invitation form only to owners/admins. Owner privileges cannot be granted through invitations.
+- The organization workspace at `/dashboard/:organizationId` lists alerts and provides CAP XML intake for owner/admin/editor roles. Alert detail pages show the latest French/Arabic adaptation and immutable version history.
+- Review decisions are submitted through `POST /api/organizations/:organizationId/alerts/:alertId/review`; only owner/admin/reviewer roles can approve or reject the latest version. Every decision is audited.
+- Publication is submitted through `POST /api/organizations/:organizationId/alerts/:alertId/publish`; only owner/admin/publisher roles can publish, and the endpoint resolves the latest approved decision server-side. Publishing returns the one-time public capability URL to the authorized publisher.
+- Public alert pages are served at `/alerts/:token`. Acknowledgements and feedback are recorded through public endpoints with token-scoped shared rate limits. Public submissions do not contact emergency services or guarantee a response.
 
 ### CAP fixtures
 
