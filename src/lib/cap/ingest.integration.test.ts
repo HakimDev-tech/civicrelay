@@ -36,9 +36,9 @@ integration("CAP ingestion lifecycle (dedicated Neon test branch)", () => {
     organizationId = organization.id;
 
     const [editor, reviewer, publisher] = await Promise.all([
-      db.insert(users).values({ authSubject: "cap-editor-" + suffix, displayName: "CAP Editor" }).returning(),
-      db.insert(users).values({ authSubject: "cap-reviewer-" + suffix, displayName: "CAP Reviewer" }).returning(),
-      db.insert(users).values({ authSubject: "cap-publisher-" + suffix, displayName: "CAP Publisher" }).returning(),
+      db.insert(users).values({ authSubject: "cap-editor-" + suffix, email: "cap-editor-" + suffix + "@example.invalid", displayName: "CAP Editor" }).returning(),
+      db.insert(users).values({ authSubject: "cap-reviewer-" + suffix, email: "cap-reviewer-" + suffix + "@example.invalid", displayName: "CAP Reviewer" }).returning(),
+      db.insert(users).values({ authSubject: "cap-publisher-" + suffix, email: "cap-publisher-" + suffix + "@example.invalid", displayName: "CAP Publisher" }).returning(),
     ]).then((rows) => rows.map((row) => row[0]));
     if (!editor || !reviewer || !publisher) throw new Error("Could not create integration users.");
 
