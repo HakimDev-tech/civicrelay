@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
@@ -148,8 +148,11 @@ export async function createAlertVersion(input: z.input<typeof createVersionSche
 
   const db = getDb();
   return db.transaction(async (tx) => {
+    // Serialize version allocation per alert to prevent concurrent duplicate version numbers.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${data.alertId}))`);
+
     const [parent] = await tx
-      .select({ id: alerts.id })
+      .select({ id: alerts.id, sourceSender: alerts.sourceSender, sourceIdentifier: alerts.sourceIdentifier })
       .from(alerts)
       .where(and(
         eq(alerts.id, data.alertId),
@@ -158,6 +161,9 @@ export async function createAlertVersion(input: z.input<typeof createVersionSche
       .limit(1);
 
     if (!parent) throw new DomainError("NOT_FOUND", "Alert not found in this organization.");
+    if (parent.sourceSender !== data.capSender || parent.sourceIdentifier !== data.capIdentifier) {
+      throw new DomainError("VALIDATION_ERROR", "CAP sender and identifier must match the parent alert identity.");
+    }
 
     const [latest] = await tx
       .select({ versionNumber: alertVersions.versionNumber })
