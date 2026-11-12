@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { parseCapXml, type NormalizedCapAlert } from "@/lib/cap/parser";
 import { DomainError } from "@/lib/domain/errors";
@@ -9,6 +9,7 @@ import {
   alertVersions,
   alerts,
   auditLogs,
+  publicationLinks,
   type Alert,
   type AlertVersion,
 } from "@/lib/db/schema";
@@ -78,13 +79,16 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
     allowedRoles: editorRoles,
   });
 
-  const parsed = parseCapXml(request.xml);
+  const parsed = parseCapXml(request.xml, { requirePublicScope: true });
   if (!parsed.success) {
     throw new DomainError("VALIDATION_ERROR", "CAP XML failed structural or semantic validation.", {
       issues: parsed.issues,
     });
   }
   const cap = parsed.data;
+  if (cap.messageType === "Update" && cap.infos.length === 0) {
+    throw new DomainError("VALIDATION_ERROR", "An Update must contain at least one info block with the revised public guidance.");
+  }
   if (cap.messageType !== "Alert" && cap.messageType !== "Update" && cap.messageType !== "Cancel") {
     throw new DomainError("VALIDATION_ERROR", "This intake workflow accepts Alert, Update, and Cancel messages. Ack and Error messages are parsed but not ingested as public alert records.", {
       messageType: cap.messageType,
@@ -205,6 +209,28 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
         .returning();
       if (!version) throw new DomainError("INVARIANT_VIOLATION", "CAP version insert did not return a record.");
 
+      // A superseding Update or Cancel immediately invalidates every old public link.
+      // The replacement version must pass a fresh human review before publication.
+      if (cap.messageType === "Update" || cap.messageType === "Cancel") {
+        const previousVersions = await tx
+          .select({ id: alertVersions.id })
+          .from(alertVersions)
+          .where(and(
+            eq(alertVersions.alertId, parentAlert.id),
+            eq(alertVersions.organizationId, request.organizationId),
+          ));
+        const previousIds = previousVersions.map((item) => item.id).filter((id) => id !== version.id);
+        if (previousIds.length > 0) {
+          await tx.update(publicationLinks)
+            .set({ status: "revoked", revokedAt: new Date() })
+            .where(and(
+              eq(publicationLinks.organizationId, request.organizationId),
+              eq(publicationLinks.status, "active"),
+              inArray(publicationLinks.alertVersionId, previousIds),
+            ));
+        }
+      }
+
       const areaRows = cap.infos.flatMap((info) => info.areas.map((area) => ({
         alertVersionId: version.id,
         areaName: area.description,
@@ -220,17 +246,24 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
       })));
       if (areaRows.length > 0) await tx.insert(alertAreas).values(areaRows);
 
+      const alertUpdate = cap.messageType === "Cancel"
+        ? {
+            status: "cancelled" as const,
+            sentAt: cap.sentAt,
+            updatedAt: new Date(),
+          }
+        : {
+            status: cap.messageType === "Update" ? "in_review" as const : "draft" as const,
+            severity: cap.repository.severity,
+            urgency: cap.repository.urgency,
+            certainty: cap.repository.certainty,
+            sentAt: cap.sentAt,
+            effectiveAt: cap.repository.effectiveAt,
+            expiresAt: cap.repository.expiresAt,
+            updatedAt: new Date(),
+          };
       const [updatedAlert] = await tx.update(alerts)
-        .set({
-          status: cap.messageType === "Cancel" ? "cancelled" : cap.messageType === "Update" ? "in_review" : "draft",
-          severity: cap.repository.severity,
-          urgency: cap.repository.urgency,
-          certainty: cap.repository.certainty,
-          sentAt: cap.sentAt,
-          effectiveAt: cap.repository.effectiveAt,
-          expiresAt: cap.repository.expiresAt,
-          updatedAt: new Date(),
-        })
+        .set(alertUpdate)
         .where(and(
           eq(alerts.id, parentAlert.id),
           eq(alerts.organizationId, request.organizationId),
