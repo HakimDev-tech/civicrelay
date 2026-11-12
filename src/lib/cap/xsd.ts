@@ -34,7 +34,7 @@ export function validateAgainstCapXsd(xml: string): string[] {
   } catch (error) {
     if (error instanceof XmlValidateError) {
       return error.message
-        .split(/\\r?\\n/)
+        .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean)
         .slice(0, 20);
