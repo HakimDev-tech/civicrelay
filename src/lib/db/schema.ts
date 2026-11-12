@@ -1,30 +1,14 @@
 import {
-  check,
-  index,
-  foreignKey,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uniqueIndex,
-  uuid,
+  check, foreignKey, index, integer, jsonb, pgEnum, pgTable, text,
+  timestamp, unique, uniqueIndex, uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-export const organizationTypeEnum = pgEnum("organization_type", [
-  "public_agency", "emergency_service", "nonprofit", "other",
-]);
+export const organizationTypeEnum = pgEnum("organization_type", ["public_agency", "emergency_service", "nonprofit", "other"]);
 export const organizationStatusEnum = pgEnum("organization_status", ["active", "suspended"]);
-export const membershipRoleEnum = pgEnum("membership_role", [
-  "owner", "admin", "editor", "reviewer", "publisher", "reader",
-]);
+export const membershipRoleEnum = pgEnum("membership_role", ["owner", "admin", "editor", "reviewer", "publisher", "reader"]);
 export const membershipStatusEnum = pgEnum("membership_status", ["invited", "active", "suspended"]);
-export const alertStatusEnum = pgEnum("alert_status", [
-  "draft", "in_review", "approved", "published", "expired", "cancelled",
-]);
+export const alertStatusEnum = pgEnum("alert_status", ["draft", "in_review", "approved", "published", "expired", "cancelled"]);
 export const capStatusEnum = pgEnum("cap_status", ["Actual", "Exercise", "System", "Test", "Draft"]);
 export const capMessageTypeEnum = pgEnum("cap_message_type", ["Alert", "Update", "Cancel", "Ack", "Error"]);
 export const capSeverityEnum = pgEnum("cap_severity", ["Extreme", "Severe", "Moderate", "Minor", "Unknown"]);
@@ -32,12 +16,8 @@ export const capUrgencyEnum = pgEnum("cap_urgency", ["Immediate", "Expected", "F
 export const capCertaintyEnum = pgEnum("cap_certainty", ["Observed", "Likely", "Possible", "Unlikely", "Unknown"]);
 export const approvalDecisionEnum = pgEnum("approval_decision", ["approved", "rejected"]);
 export const publicationStatusEnum = pgEnum("publication_status", ["active", "revoked", "expired"]);
-export const acknowledgementTypeEnum = pgEnum("acknowledgement_type", [
-  "received", "understood", "safe", "need_help",
-]);
-export const feedbackCategoryEnum = pgEnum("feedback_category", [
-  "need_help", "incorrect_information", "accessibility_issue", "other",
-]);
+export const acknowledgementTypeEnum = pgEnum("acknowledgement_type", ["received", "understood", "safe", "need_help"]);
+export const feedbackCategoryEnum = pgEnum("feedback_category", ["need_help", "incorrect_information", "accessibility_issue", "other"]);
 export const feedbackStatusEnum = pgEnum("feedback_status", ["open", "triaged", "resolved", "closed"]);
 
 const createdAt = () => timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow();
@@ -51,9 +31,9 @@ export const organizations = pgTable("organizations", {
   status: organizationStatusEnum("status").notNull().default("active"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (table) => [
-  uniqueIndex("organizations_slug_uidx").on(table.slug),
-  check("organizations_slug_format_check", sql`${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+}, (t) => [
+  uniqueIndex("organizations_slug_uidx").on(t.slug),
+  check("organizations_slug_format_check", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
 ]);
 
 export const users = pgTable("users", {
@@ -63,9 +43,7 @@ export const users = pgTable("users", {
   displayName: text("display_name").notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (table) => [
-  uniqueIndex("users_auth_subject_uidx").on(table.authSubject),
-]);
+}, (t) => [uniqueIndex("users_auth_subject_uidx").on(t.authSubject)]);
 
 export const memberships = pgTable("memberships", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -74,10 +52,10 @@ export const memberships = pgTable("memberships", {
   role: membershipRoleEnum("role").notNull().default("reader"),
   status: membershipStatusEnum("status").notNull().default("invited"),
   createdAt: createdAt(),
-}, (table) => [
-  unique("memberships_org_user_unique").on(table.organizationId, table.userId),
-  unique("memberships_id_org_unique").on(table.id, table.organizationId),
-  index("memberships_user_idx").on(table.userId),
+}, (t) => [
+  unique("memberships_org_user_unique").on(t.organizationId, t.userId),
+  unique("memberships_id_org_unique").on(t.id, t.organizationId),
+  index("memberships_user_idx").on(t.userId),
 ]);
 
 export const alerts = pgTable("alerts", {
@@ -95,12 +73,12 @@ export const alerts = pgTable("alerts", {
   createdByMembershipId: uuid("created_by_membership_id"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (table) => [
-  unique("alerts_id_org_unique").on(table.id, table.organizationId),
-  unique("alerts_source_identity_unique").on(table.organizationId, table.sourceSender, table.sourceIdentifier),
-  index("alerts_org_status_updated_idx").on(table.organizationId, table.status, table.updatedAt),
-  check("alerts_expiration_check", sql`${table.expiresAt} IS NULL OR ${table.effectiveAt} IS NULL OR ${table.expiresAt} > ${table.effectiveAt}`),
-  foreignKey({ columns: [table.createdByMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
+}, (t) => [
+  unique("alerts_id_org_unique").on(t.id, t.organizationId),
+  unique("alerts_source_identity_unique").on(t.organizationId, t.sourceSender, t.sourceIdentifier),
+  index("alerts_org_status_updated_idx").on(t.organizationId, t.status, t.updatedAt),
+  check("alerts_expiration_check", sql`${t.expiresAt} IS NULL OR ${t.effectiveAt} IS NULL OR ${t.expiresAt} > ${t.effectiveAt}`),
+  foreignKey({ columns: [t.createdByMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
 export const alertVersions = pgTable("alert_versions", {
@@ -125,14 +103,14 @@ export const alertVersions = pgTable("alert_versions", {
   instructionAr: text("instruction_ar"),
   createdByMembershipId: uuid("created_by_membership_id").notNull(),
   createdAt: createdAt(),
-}, (table) => [
-  unique("alert_versions_id_org_unique").on(table.id, table.organizationId),
-  unique("alert_versions_alert_version_unique").on(table.alertId, table.versionNumber),
-  index("alert_versions_alert_created_idx").on(table.alertId, table.createdAt),
-  check("alert_versions_number_check", sql`${table.versionNumber} > 0`),
-  check("alert_versions_sha256_check", sql`${table.sourceSha256} ~ '^[a-f0-9]{64}$'`),
-  foreignKey({ columns: [table.alertId, table.organizationId], foreignColumns: [alerts.id, alerts.organizationId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.createdByMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
+}, (t) => [
+  unique("alert_versions_id_org_unique").on(t.id, t.organizationId),
+  unique("alert_versions_alert_version_unique").on(t.alertId, t.versionNumber),
+  index("alert_versions_alert_created_idx").on(t.alertId, t.createdAt),
+  check("alert_versions_number_check", sql`${t.versionNumber} > 0`),
+  check("alert_versions_sha256_check", sql`${t.sourceSha256} ~ '^[a-f0-9]{64}$'`),
+  foreignKey({ columns: [t.alertId, t.organizationId], foreignColumns: [alerts.id, alerts.organizationId] }).onDelete("restrict"),
+  foreignKey({ columns: [t.createdByMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
 export const alertAreas = pgTable("alert_areas", {
@@ -142,7 +120,7 @@ export const alertAreas = pgTable("alert_areas", {
   description: text("description"),
   sourceArea: jsonb("source_area").$type<Record<string, unknown>>().notNull(),
   createdAt: createdAt(),
-}, (table) => [index("alert_areas_version_idx").on(table.alertVersionId)]);
+}, (t) => [index("alert_areas_version_idx").on(t.alertVersionId)]);
 
 export const alertApprovals = pgTable("alert_approvals", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -152,11 +130,11 @@ export const alertApprovals = pgTable("alert_approvals", {
   decision: approvalDecisionEnum("decision").notNull(),
   comment: text("comment"),
   createdAt: createdAt(),
-}, (table) => [
-  unique("alert_approvals_id_version_unique").on(table.id, table.alertVersionId),
-  index("alert_approvals_version_created_idx").on(table.alertVersionId, table.createdAt),
-  foreignKey({ columns: [table.alertVersionId, table.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.reviewerMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
+}, (t) => [
+  unique("alert_approvals_id_version_unique").on(t.id, t.alertVersionId),
+  index("alert_approvals_version_created_idx").on(t.alertVersionId, t.createdAt),
+  foreignKey({ columns: [t.alertVersionId, t.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
+  foreignKey({ columns: [t.reviewerMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
 export const publicationLinks = pgTable("publication_links", {
@@ -170,14 +148,17 @@ export const publicationLinks = pgTable("publication_links", {
   publishedAt: timestamp("published_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }),
   revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
-}, (table) => [
-  unique("publication_links_id_version_unique").on(table.id, table.alertVersionId),
-  uniqueIndex("publication_links_token_hash_uidx").on(table.publicTokenHash),
-  uniqueIndex("publication_links_one_active_per_version_uidx").on(table.alertVersionId).where(sql`${table.status} = 'active'`),
-  index("publication_links_status_expiry_idx").on(table.status, table.expiresAt),
-  check("publication_links_token_hash_check", sql`${table.publicTokenHash} ~ '^[a-f0-9]{64}  foreignKey({ columns: [table.alertVersionId, table.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.approvalId, table.alertVersionId], foreignColumns: [alertApprovals.id, alertApprovals.alertVersionId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.publishedByMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
+}, (t) => [
+  unique("publication_links_id_version_unique").on(t.id, t.alertVersionId),
+  uniqueIndex("publication_links_token_hash_uidx").on(t.publicTokenHash),
+  uniqueIndex("publication_links_one_active_per_version_uidx").on(t.alertVersionId).where(sql`${t.status} = 'active'`),
+  index("publication_links_status_expiry_idx").on(t.status, t.expiresAt),
+  check("publication_links_token_hash_check", sql`${t.publicTokenHash} ~ '^[a-f0-9]{64}$'`),
+  check("publication_links_expiry_check", sql`${t.expiresAt} IS NULL OR ${t.expiresAt} > ${t.publishedAt}`),
+  check("publication_links_revocation_check", sql`${t.revokedAt} IS NULL OR ${t.status} = 'revoked'`),
+  foreignKey({ columns: [t.alertVersionId, t.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
+  foreignKey({ columns: [t.approvalId, t.alertVersionId], foreignColumns: [alertApprovals.id, alertApprovals.alertVersionId] }).onDelete("restrict"),
+  foreignKey({ columns: [t.publishedByMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
 export const acknowledgements = pgTable("acknowledgements", {
@@ -186,10 +167,10 @@ export const acknowledgements = pgTable("acknowledgements", {
   alertVersionId: uuid("alert_version_id").notNull(),
   type: acknowledgementTypeEnum("type").notNull(),
   createdAt: createdAt(),
-}, (table) => [
-  index("acknowledgements_publication_created_idx").on(table.publicationLinkId, table.createdAt),
-  index("acknowledgements_version_type_idx").on(table.alertVersionId, table.type),
-  foreignKey({ columns: [table.publicationLinkId, table.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict")
+}, (t) => [
+  index("acknowledgements_publication_created_idx").on(t.publicationLinkId, t.createdAt),
+  index("acknowledgements_version_type_idx").on(t.alertVersionId, t.type),
+  foreignKey({ columns: [t.publicationLinkId, t.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict"),
 ]);
 
 export const feedback = pgTable("feedback", {
@@ -201,11 +182,11 @@ export const feedback = pgTable("feedback", {
   status: feedbackStatusEnum("status").notNull().default("open"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (table) => [
-  index("feedback_status_created_idx").on(table.status, table.createdAt),
-  index("feedback_publication_created_idx").on(table.publicationLinkId, table.createdAt),
-  check("feedback_message_length_check", sql`${table.message} IS NULL OR char_length(${table.message}) <= 4000`),
-  foreignKey({ columns: [table.publicationLinkId, table.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict")
+}, (t) => [
+  index("feedback_status_created_idx").on(t.status, t.createdAt),
+  index("feedback_publication_created_idx").on(t.publicationLinkId, t.createdAt),
+  check("feedback_message_length_check", sql`${t.message} IS NULL OR char_length(${t.message}) <= 4000`),
+  foreignKey({ columns: [t.publicationLinkId, t.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict"),
 ]);
 
 export const auditLogs = pgTable("audit_logs", {
@@ -217,71 +198,15 @@ export const auditLogs = pgTable("audit_logs", {
   entityId: uuid("entity_id"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: createdAt(),
-}, (table) => [
-  index("audit_logs_org_created_idx").on(table.organizationId, table.createdAt),
-  index("audit_logs_entity_idx").on(table.entityType, table.entityId),
-  foreignKey({ columns: [table.actorMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
+}, (t) => [
+  index("audit_logs_org_created_idx").on(t.organizationId, t.createdAt),
+  index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+  foreignKey({ columns: [t.actorMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
-export type Alert = typeof alerts.$inferSelect;
-export type NewAlert = typeof alerts.$inferInsert;
-export type AlertVersion = typeof alertVersions.$inferSelect;
-export type NewAlertVersion = typeof alertVersions.$inferInsert;
-`),
-  check("publication_links_expiry_check", sql`${table.expiresAt} IS NULL OR ${table.expiresAt} > ${table.publishedAt}`),
-  check("publication_links_revocation_check", sql`${table.revokedAt} IS NULL OR ${table.status} = 'revoked'`),
-  foreignKey({ columns: [table.alertVersionId, table.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.approvalId, table.alertVersionId], foreignColumns: [alertApprovals.id, alertApprovals.alertVersionId] }).onDelete("restrict"),
-  foreignKey({ columns: [table.publishedByMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
-]);
-
-export const acknowledgements = pgTable("acknowledgements", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  publicationLinkId: uuid("publication_link_id").notNull(),
-  alertVersionId: uuid("alert_version_id").notNull(),
-  type: acknowledgementTypeEnum("type").notNull(),
-  createdAt: createdAt(),
-}, (table) => [
-  index("acknowledgements_publication_created_idx").on(table.publicationLinkId, table.createdAt),
-  index("acknowledgements_version_type_idx").on(table.alertVersionId, table.type),
-  foreignKey({ columns: [table.publicationLinkId, table.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict")
-]);
-
-export const feedback = pgTable("feedback", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  publicationLinkId: uuid("publication_link_id").notNull(),
-  alertVersionId: uuid("alert_version_id").notNull(),
-  category: feedbackCategoryEnum("category").notNull(),
-  message: text("message"),
-  status: feedbackStatusEnum("status").notNull().default("open"),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-}, (table) => [
-  index("feedback_status_created_idx").on(table.status, table.createdAt),
-  index("feedback_publication_created_idx").on(table.publicationLinkId, table.createdAt),
-  check("feedback_message_length_check", sql`${table.message} IS NULL OR char_length(${table.message}) <= 4000`),
-  foreignKey({ columns: [table.publicationLinkId, table.alertVersionId], foreignColumns: [publicationLinks.id, publicationLinks.alertVersionId] }).onDelete("restrict")
-]);
-
-export const auditLogs = pgTable("audit_logs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").notNull(),
-  actorMembershipId: uuid("actor_membership_id"),
-  action: text("action").notNull(),
-  entityType: text("entity_type").notNull(),
-  entityId: uuid("entity_id"),
-  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: createdAt(),
-}, (table) => [
-  index("audit_logs_org_created_idx").on(table.organizationId, table.createdAt),
-  index("audit_logs_entity_idx").on(table.entityType, table.entityId),
-  foreignKey({ columns: [table.actorMembershipId, table.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict")
-]);
-
-export type Organization = typeof organizations.$inferSelect;
-export type NewOrganization = typeof organizations.$inferInsert;
+export type Membership = typeof memberships.$inferSelect;
 export type Alert = typeof alerts.$inferSelect;
 export type NewAlert = typeof alerts.$inferInsert;
 export type AlertVersion = typeof alertVersions.$inferSelect;
