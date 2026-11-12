@@ -1,5 +1,5 @@
 import {
-  boolean, check, foreignKey, index, integer, jsonb, pgEnum, pgTable, text,
+  bigint, boolean, check, foreignKey, index, integer, jsonb, pgEnum, pgTable, text,
   timestamp, unique, uniqueIndex, uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -251,6 +251,14 @@ export const authVerifications = pgTable("auth_verifications", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [index("auth_verifications_identifier_idx").on(t.identifier)]);
+
+
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  key: text("key").notNull(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+}, (t) => [uniqueIndex("auth_rate_limits_key_uidx").on(t.key)]);
 
 export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
