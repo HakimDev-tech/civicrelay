@@ -165,7 +165,7 @@ describe("parseCapXml", () => {
   it("requires mimeType on CAP resources", () => {
     const result = parseCapXml(xml(info().replace("<mimeType>image/png</mimeType>", "")));
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.issues.some((issue) => issue.path.endsWith("/mimeType"))).toBe(true);
+    if (!result.success) expect(result.issues.some((issue) => (issue.path ?? "").endsWith("/mimeType"))).toBe(true);
   });
 
   it("does not mistake a commented fake root for the document root", () => {
