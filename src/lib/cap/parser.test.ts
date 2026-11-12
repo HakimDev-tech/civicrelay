@@ -114,4 +114,37 @@ describe("parseCapXml", () => {
     expect(result.success).toBe(true);
     if (result.success) expect(result.issues.some((issue) => issue.code === "CAP_INFO_RECOMMENDED")).toBe(true);
   });
+  it("rejects impossible calendar dates instead of accepting JavaScript date rollover", () => {
+    const result = parseCapXml(xml(info()).replace("2026-11-12T09:30:00+01:00", "2026-02-31T09:30:00+01:00"));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+  });
+
+  it("rejects CAP categories outside the 1.2 vocabulary", () => {
+    const result = parseCapXml(xml(info().replace("<category>Met</category>", "<category>UnknownCategory</category>")));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_CATEGORY_INVALID")).toBe(true);
+  });
+
+  it("rejects unsupported response types", () => {
+    const result = parseCapXml(xml(info().replace("<responseType>Evacuate</responseType>", "<responseType>Launch</responseType>")));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_RESPONSE_TYPE_INVALID")).toBe(true);
+  });
+
+  it("validates timestamps inside CAP references", () => {
+    const source = xml(info())
+      .replace("<msgType>Alert</msgType>", "<msgType>Update</msgType>")
+      .replace("</scope>", "</scope><references>alerts@example.dz,flood-000,2026-02-31T08:30:00Z</references>");
+    const result = parseCapXml(source);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+  });
+
+  it("decodes predefined XML entities in human-readable fields", () => {
+    const source = xml(info().replace("Risque de crue dans la zone.", "Alerte &amp; sécurité."));
+    const result = parseCapXml(source);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.infos[0].description).toBe("Alerte & sécurité.");
+  });
 });
