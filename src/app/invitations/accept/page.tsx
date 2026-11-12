@@ -14,9 +14,10 @@ export const dynamic = "force-dynamic";
 export default async function AcceptInvitationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string | string[] }>;
 }) {
-  const { token } = await searchParams;
+  const { token: rawToken } = await searchParams;
+  const token = typeof rawToken === "string" ? rawToken : undefined;
   if (!token || token.length < 32 || token.length > 256) {
     return (
       <main className="flex min-h-screen items-center justify-center px-5 py-12">
