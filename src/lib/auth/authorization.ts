@@ -2,7 +2,8 @@ import "server-only";
 
 import { DomainError } from "@/lib/domain/errors";
 import { getCurrentSession } from "@/lib/auth/session";
-import { requireUserMembership, type MembershipRole } from "@/lib/db/repositories/user-memberships";
+import { requireUserMembership } from "@/lib/db/repositories/user-memberships";
+import type { MembershipRole } from "@/lib/db/schema";
 
 export async function requireCurrentUserOrganizationAccess(input: {
   organizationId: string;
