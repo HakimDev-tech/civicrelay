@@ -122,6 +122,7 @@ Run the full checks with:
 Run the database-backed lifecycle test only against a dedicated disposable Neon branch (never the production `main` branch):
 
     export CIVICRELAY_TEST_DATABASE_URL="<dedicated-test-branch-connection-string>"
+    export CIVICRELAY_TEST_DATABASE_CONFIRMATION="ISOLATED_BRANCH"
     pnpm test:integration
 
 
