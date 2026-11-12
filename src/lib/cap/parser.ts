@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { validateAgainstCapXsd } from "./xsd";
 
 export const CAP_NAMESPACE = "urn:oasis:names:tc:emergency:cap:1.2";
 export const DEFAULT_CAP_MAX_BYTES = 1_048_576;
@@ -189,15 +190,19 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
     issues.push({ code: "CAP_DATETIME_INVALID", message: "Expected an ISO 8601 date-time with seconds and an explicit timezone.", path, severity: "error" });
     return null;
   }
-  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , , offsetHourText, offsetMinuteText] = match;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, offsetSign, offsetHourText, offsetMinuteText] = match;
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
   const hour = Number(hourText);
   const minute = Number(minuteText);
   const second = Number(secondText);
-  const offsetHour = offsetHourText ? Number(offsetHourText) : 0;
-  const offsetMinute = offsetMinuteText ? Number(offsetMinuteText) : 0;
+  const offsetHour = Number(offsetHourText);
+  const offsetMinute = Number(offsetMinuteText);
+  if (offsetHour === 0 && offsetMinute === 0 && offsetSign !== "-") {
+    issues.push({ code: "CAP_DATETIME_INVALID", message: "CAP requires -00:00 to represent UTC; Z and +00:00 are not conformant.", path, severity: "error" });
+    return null;
+  }
   const daysInMonth = month >= 1 && month <= 12
     ? [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
     : 0;
@@ -304,7 +309,7 @@ function parseArea(value: unknown, infoIndex: number, areaIndex: number, issues:
   });
 
   if (polygons.length === 0 && circles.length === 0 && geocodes.length === 0) {
-    issues.push({ code: "CAP_AREA_GEOMETRY_MISSING", message: "An area must contain at least one polygon, circle, or geocode.", path, severity: "error" });
+    issues.push({ code: "CAP_AREA_GEOMETRY_MISSING", message: "This area has only a textual description; provide polygon, circle, or geocode when machine-readable targeting is required.", path, severity: "warning" });
   }
 
   const parseOptionalNumber = (key: "altitude" | "ceiling"): number | null => {
