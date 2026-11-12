@@ -540,6 +540,21 @@ export function parseCapXml(xml: string, options: ParseCapOptions = {}): CapPars
 
   if (!validateNamespace(xml, issues)) return { success: false, issues };
 
+  // The normative XSD enforces the CAP element sequence and schema-level constraints.
+  try {
+    const xsdErrors = validateAgainstCapXsd(xml);
+    for (const message of xsdErrors) {
+      issues.push({ code: "CAP_XSD_VALIDATION_FAILED", message, path: "/", severity: "error" });
+    }
+  } catch (error) {
+    issues.push({
+      code: "CAP_XSD_VALIDATOR_ERROR",
+      message: "The bundled CAP 1.2 XSD validator could not run: " + (error instanceof Error ? error.message : "unknown error"),
+      path: "/",
+      severity: "error",
+    });
+  }
+
   let document: XmlObject;
   try {
     document = asRecord(parser.parse(xml));
