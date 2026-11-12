@@ -1,5 +1,5 @@
 import {
-  check, foreignKey, index, integer, jsonb, pgEnum, pgTable, text,
+  boolean, check, foreignKey, index, integer, jsonb, pgEnum, pgTable, text,
   timestamp, unique, uniqueIndex, uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -38,12 +38,17 @@ export const organizations = pgTable("organizations", {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  authSubject: text("auth_subject").notNull(),
-  email: text("email"),
+  authSubject: text("auth_subject"),
+  email: text("email").notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
   displayName: text("display_name").notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [uniqueIndex("users_auth_subject_uidx").on(t.authSubject)]);
+}, (t) => [
+  uniqueIndex("users_auth_subject_uidx").on(t.authSubject),
+  uniqueIndex("users_email_uidx").on(t.email),
+]);
 
 export const memberships = pgTable("memberships", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -204,6 +209,50 @@ export const auditLogs = pgTable("audit_logs", {
   foreignKey({ columns: [t.actorMembershipId, t.organizationId], foreignColumns: [memberships.id, memberships.organizationId] }).onDelete("restrict"),
 ]);
 
+
+export const authSessions = pgTable("auth_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+  token: text("token").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+}, (t) => [
+  uniqueIndex("auth_sessions_token_uidx").on(t.token),
+  index("auth_sessions_user_id_idx").on(t.userId),
+]);
+
+export const authAccounts = pgTable("auth_accounts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true, mode: "date" }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true, mode: "date" }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [
+  uniqueIndex("auth_accounts_provider_account_uidx").on(t.providerId, t.accountId),
+  index("auth_accounts_user_id_idx").on(t.userId),
+]);
+
+export const authVerifications = pgTable("auth_verifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [index("auth_verifications_identifier_idx").on(t.identifier)]);
+
+export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Membership = typeof memberships.$inferSelect;
