@@ -51,7 +51,7 @@ Never commit .env.local or any real database credential.
 - Tenant ownership is represented explicitly by organization_id and composite foreign keys. The browser must never connect directly to PostgreSQL.
 - Original CAP XML and its parsed payload are retained per immutable alert version. Publication records reference the exact approved version.
 - Public access tokens are stored only as SHA-256 hashes. Public endpoints must check active publication status and expiry.
-- Authentication is provider-agnostic at the data-model boundary: users.auth_subject stores the external identity subject; no password credentials are stored here.
+- Better Auth manages email/password credentials, verified-email status, sessions, and verification records in PostgreSQL. The `users` UUID remains the foreign-key target for organization memberships.
 
 Apply pending migrations with:
 
@@ -76,7 +76,7 @@ Open Drizzle Studio with:
 
 ## Status
 
-The database foundation, CAP parser, transactional ingestion service, review/publication repositories, and parser test suite are implemented. Authentication-provider integration, authenticated HTTP endpoints, and the public-facing alert/dashboard UI remain separate integration milestones.
+The database foundation, CAP parser, transactional ingestion service, review/publication repositories, and parser test suite are implemented. Better Auth is integrated for email/password authentication, email verification, password resets, and server-side session resolution. Organization membership remains separately controlled by CivicRelay; signing up never grants access to an organization.
 
 
 ## CAP 1.2 ingestion
@@ -146,3 +146,22 @@ The application database client is server-only. Import it from `@/lib/db` only i
 Repository functions accept an organization ID and membership ID so authorization can be checked against PostgreSQL. Route handlers must obtain the authenticated user from the trusted authentication provider, resolve their active membership server-side, and pass that membership ID to the repository. **Never accept a membership ID or organization ID as proof of identity from an untrusted request body.**
 
 All alert and alert-version queries are scoped to an organization. Alert versions preserve the original CAP XML and SHA-256 digest and are immutable in PostgreSQL; corrections must create a new version.
+
+## Authentication
+
+- Better Auth is mounted at `/api/auth/*` and uses the existing Neon PostgreSQL database through Drizzle.
+- Email/password sign-up requires a verified email address before sign-in. Passwords must contain at least 12 characters.
+- Password reset and verification emails are sent through Resend. Configure `RESEND_API_KEY` and a verified `AUTH_EMAIL_FROM` sender before enabling account registration.
+- Set `BETTER_AUTH_SECRET` to a unique secret of at least 32 characters. Generate one with `openssl rand -base64 32`.
+- Set `BETTER_AUTH_URL` to the canonical application origin in production. It may be omitted for Vercel Preview deployments so the request origin can be inferred.
+- `src/proxy.ts` performs a lightweight session-cookie check for dashboard navigation. Protected server operations must still call `auth.api.getSession()` and resolve the current user's active organization membership from PostgreSQL.
+- A new account receives **no organization membership by default**. An authorized organization owner/admin must provision membership and role. Never accept user, organization, or membership IDs from the browser as proof of authorization.
+- Authentication tables are added by `drizzle/0004_authentication.sql`. The migration is committed but has **not** been applied to Neon main.
+
+### Authentication environment variables
+
+See `.env.example`. Keep all values in encrypted Vercel environment variables or `.env.local`; never commit real credentials.
+
+### Operational security note
+
+The built-in rate limiter is enabled, but its default in-memory storage is not shared across serverless instances. Before public registration is opened at scale, configure shared rate-limit storage (or an edge/API gateway limit) and verify email deliverability, SPF, DKIM, and DMARC for the sending domain.
