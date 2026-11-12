@@ -172,4 +172,15 @@ describe("parseCapXml", () => {
     const source = "<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->" + xml(info());
     expect(parseCapXml(source).success).toBe(true);
   });
+  it("rejects non-UTF-8 XML declarations", () => {
+    const result = parseCapXml(xml(info()).replace("encoding=\"UTF-8\"", "encoding=\"UTF-16\""));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues[0].code).toBe("CAP_XML_ENCODING_UNSUPPORTED");
+  });
+
+  it("rejects XML versions other than 1.0", () => {
+    const result = parseCapXml(xml(info()).replace("version=\"1.0\"", "version=\"1.1\""));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues[0].code).toBe("CAP_XML_VERSION_UNSUPPORTED");
+  });
 });
