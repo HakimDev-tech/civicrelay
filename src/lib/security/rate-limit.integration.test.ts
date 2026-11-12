@@ -22,10 +22,11 @@ integration("shared API rate limiting", () => {
   });
 
   afterAll(async () => {
-    if (process.env.DATABASE_URL) {
+    if (databaseUrl) {
+      process.env.DATABASE_URL = databaseUrl;
       await getDb().delete(apiRateLimits).where(eq(apiRateLimits.key, storedKey));
+      await closeDb();
     }
-    await closeDb();
   });
 
   it("counts concurrent application requests in shared PostgreSQL storage", async () => {
