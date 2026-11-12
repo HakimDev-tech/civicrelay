@@ -83,10 +83,11 @@ The database foundation, CAP parser, transactional ingestion service, review/pub
 
 The server-side CAP module is under `src/lib/cap/`:
 
-- `parser.ts` performs XML syntax checks, CAP namespace validation, field and enum validation, timezone-aware date validation, WGS 84 geometry checks, language validation, size limits, and SHA-256 source fingerprinting.
+- `parser.ts` performs XML syntax checks, CAP namespace validation, field and enum validation, OASIS timezone semantics, WGS 84 geometry checks, language validation, size limits, and SHA-256 source fingerprinting.
+- `schema/CAP-v1.2.xsd` bundles the normative OASIS CAP 1.2 XML Schema; `xsd.ts` validates each message against it with `libxml2-wasm` in addition to the application-level semantic checks. The XSD retains its OASIS copyright notice. See the [OASIS CAP 1.2 Standard](https://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.html) and its normative schema at `https://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.xsd`.
 - `ingest.ts` is a server-only transactional service for `Alert`, `Update`, and `Cancel` messages.
 - `fixtures/` contains a representative flood alert lifecycle in French and Arabic.
-- `parser.test.ts` contains parser regression tests, run by `pnpm test` and included in `pnpm check`.
+- `parser.test.ts` contains parser regression tests, including XSD-backed namespace, timestamp, sequence, and vocabulary checks, run by `pnpm test` and included in `pnpm check`.
 - `ingest.integration.test.ts` exercises the complete Alert → Update → Cancel lifecycle against a dedicated PostgreSQL test branch. It is skipped unless `CIVICRELAY_TEST_DATABASE_URL` is set.
 
 ### Operational ingestion policy
