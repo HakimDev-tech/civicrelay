@@ -186,4 +186,9 @@ describe("parseCapXml", () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.issues[0].code).toBe("CAP_XML_VERSION_UNSUPPORTED");
   });
+  it("rejects timezone offsets that are not XML Schema compliant", () => {
+    const result = parseCapXml(xml(info()).replace("+01:00", "+0100"));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+  });
 });
