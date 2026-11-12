@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
@@ -39,8 +39,18 @@ export async function approveAlertVersion(input: {
 
   return getDb().transaction(async (tx) => {
     const [version] = await tx
-      .select({ id: alertVersions.id, alertId: alertVersions.alertId, versionNumber: alertVersions.versionNumber })
+      .select({
+        id: alertVersions.id,
+        alertId: alertVersions.alertId,
+        versionNumber: alertVersions.versionNumber,
+        capMessageType: alertVersions.capMessageType,
+        alertStatus: alerts.status,
+      })
       .from(alertVersions)
+      .innerJoin(alerts, and(
+        eq(alerts.id, alertVersions.alertId),
+        eq(alerts.organizationId, alertVersions.organizationId),
+      ))
       .where(and(
         eq(alertVersions.id, alertVersionId),
         eq(alertVersions.organizationId, organizationId),
@@ -48,6 +58,12 @@ export async function approveAlertVersion(input: {
       .limit(1);
 
     if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
+    if (version.capMessageType === "Cancel" || version.alertStatus === "cancelled" || version.alertStatus === "expired") {
+      throw new DomainError("INVARIANT_VIOLATION", "Cancelled or expired alert versions cannot be approved.");
+    }
+    if (version.alertStatus === "published") {
+      throw new DomainError("CONFLICT", "A published alert version cannot be re-reviewed; create a new CAP Update instead.");
+    }
     const [latestVersion] = await tx
       .select({ id: alertVersions.id })
       .from(alertVersions)
@@ -68,7 +84,7 @@ export async function approveAlertVersion(input: {
 
     if (input.decision === "approved") {
       await tx.update(alerts)
-        .set({ status: "approved", updatedAt: new Date() })
+        .set({ status: input.decision === "approved" ? "approved" : "in_review", updatedAt: new Date() })
         .where(and(eq(alerts.id, version.alertId), eq(alerts.organizationId, organizationId)));
     }
 
