@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/organizations/[organizationId]/alerts/import/route";
 import { requireCurrentUserOrganizationAccess } from "@/lib/auth/authorization";
 import { ingestCapXml } from "@/lib/cap/ingest";
+import { enforceSharedRateLimit } from "@/lib/security/rate-limit";
 import { DomainError } from "@/lib/domain/errors";
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -59,7 +60,7 @@ describe("POST /api/organizations/:organizationId/alerts/import", () => {
     vi.mocked(requireCurrentUserOrganizationAccess).mockResolvedValue({
       membership: { id: membershipId },
     } as never);
-    vi.mocked(ingestCapXml).mockResolvedValue(successfulIngestion as never);
+    vi.mocked(ingestCapXml).mockResolvedValue(successfulIngestion as never);\n    vi.mocked(enforceSharedRateLimit).mockResolvedValue();
     delete process.env.CAP_MAX_PAYLOAD_BYTES;
   });
 
@@ -129,6 +130,20 @@ describe("POST /api/organizations/:organizationId/alerts/import", () => {
     });
 
     expect(response.status).toBe(403);
+    expect(ingestCapXml).not.toHaveBeenCalled();
+  });
+
+
+  it("stops ingestion when the shared rate limit is exceeded", async () => {
+    vi.mocked(enforceSharedRateLimit).mockRejectedValue(
+      new DomainError("RATE_LIMITED", "Too many CAP import attempts."),
+    );
+
+    const response = await POST(makeRequest(), {
+      params: Promise.resolve({ organizationId }),
+    });
+
+    expect(response.status).toBe(429);
     expect(ingestCapXml).not.toHaveBeenCalled();
   });
 
