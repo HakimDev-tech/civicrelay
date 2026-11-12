@@ -199,10 +199,7 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
   const second = Number(secondText);
   const offsetHour = Number(offsetHourText);
   const offsetMinute = Number(offsetMinuteText);
-  if (offsetHour === 0 && offsetMinute === 0 && offsetSign !== "-") {
-    issues.push({ code: "CAP_DATETIME_INVALID", message: "CAP requires -00:00 to represent UTC; Z and +00:00 are not conformant.", path, severity: "error" });
-    return null;
-  }
+
   const daysInMonth = month >= 1 && month <= 12
     ? [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
     : 0;
