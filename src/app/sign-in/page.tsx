@@ -23,9 +23,9 @@ function safeCallbackURL(value?: string): string {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackURL?: string }>;
+  searchParams: Promise<{ callbackURL?: string | string[] }>;
 }) {
   const { callbackURL: requestedCallback } = await searchParams;
-  const callbackURL = safeCallbackURL(requestedCallback);
+  const callbackURL = safeCallbackURL(typeof requestedCallback === "string" ? requestedCallback : undefined);
   return <AuthForm mode="sign-in" callbackURL={callbackURL} />;
 }
