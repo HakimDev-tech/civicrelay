@@ -186,9 +186,22 @@ describe("parseCapXml", () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.issues[0].code).toBe("CAP_XML_VERSION_UNSUPPORTED");
   });
-  it("rejects timezone offsets that are not XML Schema compliant", () => {
-    const result = parseCapXml(xml(info()).replace("+01:00", "+0100"));
-    expect(result.success).toBe(false);
-    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+  it("rejects alphabetic UTC designators and positive zero offsets under OASIS CAP 1.2", () => {
+    for (const invalid of ["2026-11-12T09:30:00Z", "2026-11-12T09:30:00+00:00"]) {
+      const result = parseCapXml(xml(info()).replace("2026-11-12T09:30:00+01:00", invalid));
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+    }
   });
+
+  it("accepts the OASIS UTC representation -00:00", () => {
+    const result = parseCapXml(xml(info()).replace("2026-11-12T09:30:00+01:00", "2026-11-12T09:30:00-00:00"));
+    expect(result.success).toBe(true);
+  });
+
+    it("rejects timezone offsets that are not XML Schema compliant", () => {
+      const result = parseCapXml(xml(info()).replace("+01:00", "+0100"));
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_DATETIME_INVALID")).toBe(true);
+    });
 });
