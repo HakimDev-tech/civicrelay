@@ -26,6 +26,7 @@ export default async function PublicAlertPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) notFound();
   const alert = await getPublicAlertByToken(token);
   if (!alert) notFound();
 
