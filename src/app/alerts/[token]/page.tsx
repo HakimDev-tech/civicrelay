@@ -83,6 +83,20 @@ export default async function PublicAlertPage({
             </div>
           </div>
 
+          {alert.areas.length > 0 && (
+            <section className="mt-6 rounded-2xl border border-border bg-background p-5">
+              <h2 className="text-sm font-semibold">Affected areas</h2>
+              <ul className="mt-3 space-y-2">
+                {alert.areas.map((area, index) => (
+                  <li key={area.name + "-" + index} className="text-sm leading-6">
+                    <span className="font-semibold">{area.name}</span>
+                    {area.description && area.description !== area.name && <span className="text-muted"> — {area.description}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <p className="mt-6 text-xs leading-5 text-muted">
             This public guidance is an accessible adaptation of an authoritative CAP alert, published by {alert.organizationName} after human review. CivicRelay does not originate official warnings and does not replace emergency services. If you are in immediate danger, contact the relevant local emergency service directly.
           </p>
