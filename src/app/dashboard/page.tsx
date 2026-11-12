@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/auth/session";
 import { listActiveMembershipsForUser } from "@/lib/db/repositories/user-memberships";
@@ -19,7 +20,7 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <a href="/" className="text-sm font-semibold text-brand">CivicRelay</a>
+            <Link href="/" className="text-sm font-semibold text-brand">CivicRelay</Link>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Workspace</h1>
             <p className="mt-1 text-sm text-muted">Signed in as {session.user.email}</p>
           </div>
