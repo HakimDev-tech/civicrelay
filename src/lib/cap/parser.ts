@@ -213,7 +213,7 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
 }
 
 function validateNamespace(xml: string, issues: CapIssue[]): boolean {
-  const match = /<((?:[A-Za-z_][\w.-]*:)?alert)\b([^>]*)>/i.exec(xml);
+  const match = /<((?:[A-Za-z_][\w.-]*:)?alert)\b([^>]*)>/.exec(xml);
   if (!match) {
     issues.push({ code: "CAP_ROOT_MISSING", message: "The XML document must have a CAP alert root element.", path: "/", severity: "error" });
     return false;
@@ -277,7 +277,7 @@ function parseArea(value: unknown, infoIndex: number, areaIndex: number, issues:
   const circles = asArray(area.circle).flatMap((circle, index) => {
     const raw = textValue(circle);
     const pieces = raw.split(/\s+/);
-    if (pieces.length !== 2 || !/^[-+]?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(pieces[0]) || !Number.isFinite(Number(pieces[1]))) {
+    if (pieces.length !== 2 || !/^[-+]?\d+(?:\.\d+)?[,]\s*[-+]?\d+(?:\.\d+)?$/.test(pieces[0]) || !Number.isFinite(Number(pieces[1]))) {
       issues.push({ code: "CAP_CIRCLE_INVALID", message: "A circle must contain a latitude,longitude pair and a radius in kilometres.", path: `${path}/circle[${index}]`, severity: "error" });
       return [];
     }
