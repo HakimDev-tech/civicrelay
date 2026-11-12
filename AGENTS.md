@@ -33,3 +33,11 @@ CivicRelay transforms authoritative Common Alerting Protocol (CAP) messages into
 - Keep email verification mandatory. Registration must fail closed if the transactional email provider is not configured.
 - Rate limiting must use shared storage suitable for serverless instances.
 - Do not apply `drizzle/0004_authentication.sql` to Neon main without explicit user approval. Validate schema changes against an isolated database first.
+
+## HTTP API security
+- Cookie-authenticated mutation routes must reject cross-origin requests and use no-store responses.
+- Resolve the authenticated user from the verified Better Auth server session. Resolve organization membership and role from PostgreSQL; never accept membership IDs from request payloads.
+- Apply shared, database-backed rate limits before expensive parsing or writes. Do not use process-local in-memory limits for serverless routes.
+- Stream and bound untrusted request bodies before parsing. Validate content types and UTF-8 explicitly.
+- Public/API responses must not include stored source XML, full raw CAP payloads, secrets, or internal authorization data.
+- Keep database migrations additive. Never apply new migrations to Neon main without explicit user approval.
