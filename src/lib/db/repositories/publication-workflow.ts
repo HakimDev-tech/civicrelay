@@ -6,6 +6,7 @@ import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
 import {
   alertApprovals,
+  alertAreas,
   auditLogs,
   alertVersions,
   alerts,
@@ -383,7 +384,17 @@ export async function getPublicAlertByToken(token: string) {
     ))
     .limit(1);
 
-  return result ?? null;
+  if (!result) return null;
+
+  const areas = await getDb()
+    .selectDistinct({
+      name: alertAreas.areaName,
+      description: alertAreas.description,
+    })
+    .from(alertAreas)
+    .where(eq(alertAreas.alertVersionId, result.alertVersionId));
+
+  return { ...result, areas };
 }
 
 export async function recordPublicAcknowledgement(input: {
