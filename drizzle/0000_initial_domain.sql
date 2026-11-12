@@ -189,9 +189,13 @@ END;
 $$;
 CREATE TRIGGER alert_versions_immutable BEFORE UPDATE OR DELETE ON alert_versions
 FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
+CREATE TRIGGER alert_areas_immutable BEFORE UPDATE OR DELETE ON alert_areas
+FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
 CREATE TRIGGER alert_approvals_immutable BEFORE UPDATE OR DELETE ON alert_approvals
 FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
 CREATE TRIGGER audit_logs_append_only BEFORE UPDATE OR DELETE ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
+CREATE TRIGGER acknowledgements_append_only BEFORE UPDATE OR DELETE ON acknowledgements
 FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
 
 -- Publication is accepted only when the approval record approves this exact version.
