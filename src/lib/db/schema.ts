@@ -253,7 +253,13 @@ export const authVerifications = pgTable("auth_verifications", {
 }, (t) => [index("auth_verifications_identifier_idx").on(t.identifier)]);
 
 
-export const apiRateLimits = pgTable("api_rate_limits", {\n  key: text("key").primaryKey(),\n  windowStartedAt: timestamp("window_started_at", { withTimezone: true, mode: "date" }).notNull(),\n  count: integer("count").notNull(),\n});\n\nexport const authRateLimits = pgTable("auth_rate_limits", {
+export const apiRateLimits = pgTable("api_rate_limits", {
+  key: text("key").primaryKey(),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true, mode: "date" }).notNull(),
+  count: integer("count").notNull(),
+});
+
+export const authRateLimits = pgTable("auth_rate_limits", {
   id: uuid("id").defaultRandom().primaryKey(),
   key: text("key").notNull(),
   count: integer("count").notNull(),
