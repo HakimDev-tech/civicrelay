@@ -166,7 +166,7 @@ All alert and alert-version queries are scoped to an organization. Alert version
 - Set `BETTER_AUTH_URL` to the canonical application origin in production. It may be omitted for Vercel Preview deployments so the request origin can be inferred.
 - `src/proxy.ts` performs a lightweight session-cookie check for dashboard navigation. Protected server operations must still call `auth.api.getSession()` and resolve the current user's active organization membership from PostgreSQL.
 - A new account receives **no organization membership by default**. An authorized organization owner/admin must issue an invitation; the invited user must accept it with the matching verified email. Owner privileges cannot be assigned through invitations. Never accept user, organization, or membership IDs from the browser as proof of authorization.
-- Authentication tables are added by `drizzle/0004_authentication.sql`; shared API rate-limit storage is added by `drizzle/0005_api_rate_limits.sql`; organization invitations are added by `drizzle/0006_organization_invitations.sql`. These migrations are committed but have **not** been applied to Neon main.
+- Authentication tables are added by `drizzle/0004_authentication.sql`; shared API rate-limit storage is added by `drizzle/0005_api_rate_limits.sql`; organization invitations are added by `drizzle/0006_organization_invitations.sql`. All migrations from `0000` through `0006` have been applied and checksum-verified on the current Neon main branch. Apply the same committed migrations to any new environment with `pnpm db:migrate`.
 
 ### Initial organization provisioning
 
