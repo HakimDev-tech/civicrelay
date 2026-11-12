@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { parseCapXml } from "@/lib/cap/parser";
 
 const namespace = "urn:oasis:names:tc:emergency:cap:1.2";
@@ -146,5 +147,29 @@ describe("parseCapXml", () => {
     const result = parseCapXml(source);
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.infos[0].description).toBe("Alerte & sécurité.");
+  });
+  it.each(["flood-alert.xml", "flood-update.xml", "flood-cancel.xml"])("parses the operational fixture %s", (filename) => {
+    const source = readFileSync(new URL("./fixtures/" + filename, import.meta.url), "utf8");
+    const result = parseCapXml(source, { requirePublicScope: true });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an area that has no polygon, circle, or geocode", () => {
+    const source = xml(info().replace("<polygon>36.70,4.05 36.71,4.05 36.71,4.06 36.70,4.05</polygon>", ""))
+      .replace("<geocode><valueName>POSTAL</valueName><value>15000</value></geocode>", "");
+    const result = parseCapXml(source);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.code === "CAP_AREA_GEOMETRY_MISSING")).toBe(true);
+  });
+
+  it("requires mimeType on CAP resources", () => {
+    const result = parseCapXml(xml(info().replace("<mimeType>image/png</mimeType>", "")));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues.some((issue) => issue.path.endsWith("/mimeType"))).toBe(true);
+  });
+
+  it("does not mistake a commented fake root for the document root", () => {
+    const source = "<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->" + xml(info());
+    expect(parseCapXml(source).success).toBe(true);
   });
 });
