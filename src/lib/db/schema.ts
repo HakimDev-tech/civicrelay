@@ -113,6 +113,7 @@ export const alertVersions = pgTable("alert_versions", {
   capSentAt: timestamp("cap_sent_at", { withTimezone: true, mode: "date" }).notNull(),
   capStatus: capStatusEnum("cap_status").notNull(),
   capMessageType: capMessageTypeEnum("cap_message_type").notNull(),
+  capReferences: jsonb("cap_references").$type<string[]>().notNull().default([]),
   sourceXml: text("source_xml").notNull(),
   sourcePayload: jsonb("source_payload").$type<Record<string, unknown>>().notNull(),
   sourceSha256: text("source_sha256").notNull(),
@@ -172,6 +173,7 @@ export const publicationLinks = pgTable("publication_links", {
 }, (table) => [
   unique("publication_links_id_version_unique").on(table.id, table.alertVersionId),
   uniqueIndex("publication_links_token_hash_uidx").on(table.publicTokenHash),
+  uniqueIndex("publication_links_one_active_per_version_uidx").on(table.alertVersionId).where(sql`${table.status} = 'active'`),
   index("publication_links_status_expiry_idx").on(table.status, table.expiresAt),
   check("publication_links_token_hash_check", sql`${table.publicTokenHash} ~ '^[a-f0-9]{64}$'`),
   foreignKey({ columns: [table.alertVersionId, table.organizationId], foreignColumns: [alertVersions.id, alertVersions.organizationId] }).onDelete("restrict"),
