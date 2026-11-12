@@ -9,8 +9,14 @@ import {
   verificationEmailText,
 } from "./email";
 
-const authBaseURL = process.env.BETTER_AUTH_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+// On Vercel, always prefer the deployment's own HTTPS origin. A stale
+// BETTER_AUTH_URL copied from local development must never leak localhost
+// into verification or password-reset links.
+const vercelBaseURL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : undefined;
+const authBaseURL = vercelBaseURL ??
+  (process.env.VERCEL ? undefined : process.env.BETTER_AUTH_URL);
 
 function createAuth() {
   const secret = process.env.BETTER_AUTH_SECRET;
