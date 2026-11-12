@@ -10,10 +10,11 @@ import {
   alerts,
   auditLogs,
   publicationLinks,
+  memberships,
+  organizations,
   type Alert,
   type AlertVersion,
 } from "@/lib/db/schema";
-import { memberships, organizations } from "@/lib/db/schema";
 
 const inputSchema = z.object({
   organizationId: z.string().uuid(),
