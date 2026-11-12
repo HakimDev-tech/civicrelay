@@ -6,9 +6,10 @@ import { authClient } from "@/lib/auth/client";
 
 type AuthFormProps = {
   mode: "sign-in" | "sign-up";
+  callbackURL?: string;
 };
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, callbackURL = "/dashboard" }: AuthFormProps) {
   const isSignUp = mode === "sign-up";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           name: name.trim(),
           email: email.trim(),
           password,
-          callbackURL: "/dashboard",
+          callbackURL,
         });
 
         if (result.error) {
@@ -41,7 +42,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         const result = await authClient.signIn.email({
           email: email.trim(),
           password,
-          callbackURL: "/dashboard",
+          callbackURL,
         });
 
         if (result.error) {
@@ -157,7 +158,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             <p className="mt-7 text-center text-sm text-muted">
               {isSignUp ? "Already have an account?" : "New to CivicRelay?"}{" "}
-              <Link href={isSignUp ? "/sign-in" : "/sign-up"} className="font-semibold text-brand hover:underline">
+              <Link href={callbackURL === "/dashboard" ? (isSignUp ? "/sign-in" : "/sign-up") : `${isSignUp ? "/sign-in" : "/sign-up"}?callbackURL=${encodeURIComponent(callbackURL)}`} className="font-semibold text-brand hover:underline">
                 {isSignUp ? "Sign in" : "Create an account"}
               </Link>
             </p>
