@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 
 export function SignOutButton() {
   const [pending, setPending] = useState(false);
+  const router = useRouter();
 
   async function signOut() {
     setPending(true);
     try {
-      await authClient.signOut();
-      window.location.assign("/sign-in");
+      const result = await authClient.signOut();
+      if (result.error) throw new Error(result.error.message);
+      router.replace("/sign-in");
     } finally {
       setPending(false);
     }
