@@ -10,11 +10,11 @@ const info = (language = "fr-FR", extra = "") =>
   "<certainty>Observed</certainty><effective>2026-11-12T10:00:00+01:00</effective>" +
   "<expires>2026-11-12T18:00:00+01:00</expires><headline>Alerte inondation</headline>" +
   "<description>Risque de crue dans la zone.</description><instruction>Éloignez-vous des cours d'eau.</instruction>" +
-  "<area><areaDesc>Centre-ville</areaDesc><polygon>36.70,4.05 36.71,4.05 36.71,4.06 36.70,4.05</polygon>" +
-  "<geocode><valueName>POSTAL</valueName><value>15000</value></geocode></area>" +
   "<parameter><valueName>source</valueName><value>test</value></parameter>" +
   "<resource><resourceDesc>Carte</resourceDesc><mimeType>image/png</mimeType><size>1024</size></resource>" +
-  extra + "</info>";
+  extra +
+  "<area><areaDesc>Centre-ville</areaDesc><polygon>36.70,4.05 36.71,4.05 36.71,4.06 36.70,4.05</polygon>" +
+  "<geocode><valueName>POSTAL</valueName><value>15000</value></geocode></area></info>";
 
 const xml = (body: string, attrs = 'xmlns="' + namespace + '"') =>
   '<?xml version="1.0" encoding="UTF-8"?>\n<alert ' + attrs + ">" +
