@@ -77,6 +77,7 @@ CREATE TABLE alert_versions (
   cap_sent_at timestamptz NOT NULL,
   cap_status cap_status NOT NULL,
   cap_message_type cap_message_type NOT NULL,
+  cap_references jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(cap_references) = 'array'),
   source_xml text NOT NULL,
   source_payload jsonb NOT NULL,
   source_sha256 text NOT NULL CHECK (source_sha256 ~ '^[a-f0-9]{64}$'),
@@ -134,8 +135,10 @@ CREATE TABLE publication_links (
   FOREIGN KEY (alert_version_id, organization_id) REFERENCES alert_versions(id, organization_id) ON DELETE RESTRICT,
   FOREIGN KEY (approval_id, alert_version_id) REFERENCES alert_approvals(id, alert_version_id) ON DELETE RESTRICT,
   FOREIGN KEY (published_by_membership_id, organization_id) REFERENCES memberships(id, organization_id) ON DELETE RESTRICT,
-  CHECK (revoked_at IS NULL OR status = 'revoked')
+  CHECK (revoked_at IS NULL OR status = 'revoked'),
+  CHECK (expires_at IS NULL OR expires_at > published_at)
 );
+CREATE UNIQUE INDEX publication_links_one_active_per_version_uidx ON publication_links(alert_version_id) WHERE status = 'active';
 CREATE INDEX publication_links_status_expiry_idx ON publication_links(status, expires_at);
 
 CREATE TABLE acknowledgements (
@@ -194,17 +197,41 @@ FOR EACH ROW EXECUTE FUNCTION civicrelay_reject_immutable_mutation();
 -- Publication is accepted only when the approval record approves this exact version.
 CREATE FUNCTION civicrelay_require_approved_version() RETURNS trigger
 LANGUAGE plpgsql AS $$
-DECLARE approval_decision_value approval_decision;
+DECLARE
+  approval_decision_value approval_decision;
+  reviewer_role membership_role;
+  reviewer_status membership_status;
+  publisher_role membership_role;
+  publisher_status membership_status;
 BEGIN
-  SELECT decision INTO approval_decision_value
-  FROM alert_approvals
-  WHERE id = NEW.approval_id AND alert_version_id = NEW.alert_version_id
-    AND organization_id = NEW.organization_id;
-  IF approval_decision_value IS DISTINCT FROM 'approved'::approval_decision THEN
-    RAISE EXCEPTION 'publication requires approval of the exact alert version';
+  SELECT a.decision, reviewer.role, reviewer.status
+    INTO approval_decision_value, reviewer_role, reviewer_status
+  FROM alert_approvals AS a
+  JOIN memberships AS reviewer
+    ON reviewer.id = a.reviewer_membership_id
+   AND reviewer.organization_id = a.organization_id
+  WHERE a.id = NEW.approval_id
+    AND a.alert_version_id = NEW.alert_version_id
+    AND a.organization_id = NEW.organization_id;
+
+  IF approval_decision_value IS DISTINCT FROM 'approved'::approval_decision
+     OR reviewer_status IS DISTINCT FROM 'active'::membership_status
+     OR reviewer_role NOT IN ('owner'::membership_role, 'admin'::membership_role, 'reviewer'::membership_role) THEN
+    RAISE EXCEPTION 'publication requires approval of this exact version by an active reviewer';
   END IF;
+
+  SELECT role, status INTO publisher_role, publisher_status
+  FROM memberships
+  WHERE id = NEW.published_by_membership_id
+    AND organization_id = NEW.organization_id;
+
+  IF publisher_status IS DISTINCT FROM 'active'::membership_status
+     OR publisher_role NOT IN ('owner'::membership_role, 'admin'::membership_role, 'publisher'::membership_role) THEN
+    RAISE EXCEPTION 'publication requires an active publisher in the same organization';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER publication_requires_approval BEFORE INSERT OR UPDATE OF approval_id, alert_version_id, organization_id
+CREATE TRIGGER publication_requires_approval BEFORE INSERT OR UPDATE OF approval_id, alert_version_id, organization_id, published_by_membership_id
 ON publication_links FOR EACH ROW EXECUTE FUNCTION civicrelay_require_approved_version();
