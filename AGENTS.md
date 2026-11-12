@@ -48,3 +48,12 @@ CivicRelay transforms authoritative Common Alerting Protocol (CAP) messages into
 - Require an authenticated session with a verified email matching the invitation before activating membership.
 - Accept invitations transactionally; activate only the role stored in the invitation and record audit events.
 - Failed email delivery must invalidate the pending invitation. Do not expose invitation tokens in API responses or logs.
+
+## Alert review and public publication
+- Only the latest CAP version may be reviewed or published. Serialize review/publication transitions with the same per-alert PostgreSQL advisory lock used by CAP ingestion.
+- A publication route must resolve the latest approval server-side; never accept a client-selected approval as proof of approval.
+- Publishing is a distinct human action by an authorized publisher. Never auto-publish after approval.
+- Return a raw public capability token only once to the authorized publisher; persist only its SHA-256 hash.
+- Public alert pages must query through the active-publication repository and exclude raw CAP XML and internal identifiers.
+- Public acknowledgement/feedback routes must validate the capability token, apply shared rate limits, bound request bodies, and state clearly that submissions do not contact emergency services or guarantee a response.
+- Use no-referrer/noindex behavior for capability-token pages to reduce token leakage.
