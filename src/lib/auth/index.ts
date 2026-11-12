@@ -1,98 +1,111 @@
 import "server-only";
 
-import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { betterAuth } from "better-auth/minimal";
 import { getDb, schema } from "@/lib/db";
-import { sendAuthEmail, passwordResetEmailText, verificationEmailText } from "./email";
+import {
+  passwordResetEmailText,
+  sendAuthEmail,
+  verificationEmailText,
+} from "./email";
 
-const trustedOrigins = [
-  process.env.BETTER_AUTH_URL,
-  process.env.NEXT_PUBLIC_APP_URL,
-].filter((origin): origin is string => Boolean(origin));
+const trustedOrigins = [process.env.BETTER_AUTH_URL].filter(
+  (origin): origin is string => Boolean(origin),
+);
 
 function createAuth() {
   return betterAuth({
-  appName: "CivicRelay",
-  ...(process.env.BETTER_AUTH_SECRET
-    ? { secret: process.env.BETTER_AUTH_SECRET }
-    : {}),
-  ...(process.env.BETTER_AUTH_URL
-    ? { baseURL: process.env.BETTER_AUTH_URL }
-    : {}),
-  trustedOrigins,
-  database: drizzleAdapter(getDb(), {
-    provider: "pg",
-    schema: {
-      user: schema.users,
-      session: schema.authSessions,
-      account: schema.authAccounts,
-      verification: schema.authVerifications,
-      rateLimit: schema.authRateLimits,
+    appName: "CivicRelay",
+    ...(process.env.BETTER_AUTH_SECRET
+      ? { secret: process.env.BETTER_AUTH_SECRET }
+      : {}),
+    ...(process.env.BETTER_AUTH_URL
+      ? { baseURL: process.env.BETTER_AUTH_URL }
+      : {}),
+    trustedOrigins,
+    database: drizzleAdapter(getDb(), {
+      provider: "pg",
+      schema: {
+        user: schema.users,
+        session: schema.authSessions,
+        account: schema.authAccounts,
+        verification: schema.authVerifications,
+        rateLimit: schema.authRateLimits,
+      },
+    }),
+    user: {
+      fields: {
+        name: "displayName",
+      },
     },
-  }),
-  user: {
-    fields: {
-      name: "displayName",
+    databaseHooks: {
+      user: {
+        create: {
+          before: async () => {
+            if (!process.env.RESEND_API_KEY || !process.env.AUTH_EMAIL_FROM) {
+              throw new Error("Account registration is unavailable until transactional email is configured.");
+            }
+          },
+        },
+      },
     },
-  },
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: true,
-    minPasswordLength: 12,
-    maxPasswordLength: 128,
-    sendResetPassword: async ({ user, url }) => {
-      await sendAuthEmail({
-        to: user.email,
-        subject: "Reset your CivicRelay password",
-        text: passwordResetEmailText(url),
-      });
-    },
-  },
-  emailVerification: {
-    sendOnSignUp: true,
-    sendOnSignIn: true,
-    autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      await sendAuthEmail({
-        to: user.email,
-        subject: "Verify your CivicRelay email address",
-        text: verificationEmailText(url),
-      });
-    },
-  },
-  session: {
-    expiresIn: 60 * 60 * 24 * 7,
-    updateAge: 60 * 60 * 24,
-    cookieCache: {
+    emailAndPassword: {
       enabled: true,
-      maxAge: 5 * 60,
+      requireEmailVerification: true,
+      minPasswordLength: 12,
+      maxPasswordLength: 128,
+      sendResetPassword: async ({ user, url }) => {
+        await sendAuthEmail({
+          to: user.email,
+          subject: "Reset your CivicRelay password",
+          text: passwordResetEmailText(url),
+        });
+      },
     },
-  },
-  rateLimit: {
-    enabled: true,
-    storage: "database",
-    modelName: "auth_rate_limits",
-    window: 60,
-    max: 10,
-    customRules: {
-      "/sign-in/email": { window: 60, max: 5 },
-      "/sign-up/email": { window: 60, max: 3 },
-      "/forget-password": { window: 60, max: 3 },
-      "/send-verification-email": { window: 60, max: 3 },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendAuthEmail({
+          to: user.email,
+          subject: "Verify your CivicRelay email address",
+          text: verificationEmailText(url),
+        });
+      },
     },
-  },
-  advanced: {
-    database: {
-      generateId: "uuid",
+    session: {
+      expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24,
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+      },
     },
-    defaultCookieAttributes: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+      modelName: "auth_rate_limits",
+      window: 60,
+      max: 10,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 5 },
+        "/sign-up/email": { window: 60, max: 3 },
+        "/forget-password": { window: 60, max: 3 },
+        "/send-verification-email": { window: 60, max: 3 },
+      },
     },
-  },
-});
-
+    advanced: {
+      database: {
+        generateId: "uuid",
+      },
+      defaultCookieAttributes: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  });
 }
 
 type AuthInstance = ReturnType<typeof createAuth>;
