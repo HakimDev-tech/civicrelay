@@ -42,7 +42,7 @@ export default async function DashboardPage() {
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {memberships.map(({ membership, organization }) => (
                 <li key={membership.id} className="rounded-2xl border border-border bg-surface p-5">
-                  <h3 className="font-semibold">{organization.name}</h3>
+                  <Link href={`/dashboard/${organization.id}`} className="font-semibold text-brand hover:underline">{organization.name} →</Link>
                   <p className="mt-2 text-sm text-muted">Role: {membership.role}</p>
                   <p className="mt-1 text-xs text-muted">Membership: {membership.status}</p>
                   {(membership.role === "owner" || membership.role === "admin") && (
