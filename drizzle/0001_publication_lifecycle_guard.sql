@@ -48,7 +48,15 @@ BEGIN
    AND reviewer.organization_id = a.organization_id
   WHERE a.id = NEW.approval_id
     AND a.alert_version_id = NEW.alert_version_id
-    AND a.organization_id = NEW.organization_id;
+    AND a.organization_id = NEW.organization_id
+    AND a.id = (
+      SELECT latest.id
+      FROM alert_approvals AS latest
+      WHERE latest.alert_version_id = NEW.alert_version_id
+        AND latest.organization_id = NEW.organization_id
+      ORDER BY latest.created_at DESC, latest.id DESC
+      LIMIT 1
+    );
 
   IF approval_decision_value IS DISTINCT FROM 'approved'::approval_decision
      OR reviewer_status IS DISTINCT FROM 'active'::membership_status
