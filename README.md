@@ -187,3 +187,20 @@ See `.env.example`. Keep all values in encrypted Vercel environment variables or
 ### Operational security note
 
 Rate limiting is enabled with PostgreSQL-backed shared storage, including stricter rules for sign-in, sign-up, password reset, and verification requests. GitHub Actions also provisions an ephemeral PostgreSQL service, applies all SQL migrations, and runs the CAP and authentication integration suites. Verify email deliverability, SPF, DKIM, and DMARC for the sending domain before public registration.
+
+## Vercel Preview runtime setup
+
+The CivicRelay Vercel project uses a separate Preview runtime configuration until the pull request is reviewed and merged.
+
+Configured automatically for Preview:
+- `DATABASE_URL`: Neon pooled connection, using the least-privilege `civicrelay_runtime` database role.
+- `BETTER_AUTH_SECRET`: independently generated random secret, stored as a sensitive Vercel environment variable.
+- `BETTER_AUTH_URL`: intentionally omitted on Preview. Better Auth derives its canonical origin from Vercel's deployment-specific `VERCEL_URL`.
+
+Required before enabling real account registration:
+- `RESEND_API_KEY`: a valid Resend API key, stored as a sensitive Vercel environment variable.
+- `AUTH_EMAIL_FROM`: a sender identity on a domain verified in Resend, for example `CivicRelay <security@your-verified-domain.example>`.
+
+Do not use a guessed sender domain or a placeholder API key. Registration intentionally fails closed until both Resend values exist. Add them in Vercel Project → Settings → Environment Variables, target Preview first, then redeploy the Preview deployment. Do not copy secrets into Git, issue comments, or chat.
+
+The direct `DATABASE_URL_UNPOOLED` connection is reserved for schema migration operations and is not required by the web runtime. Keep production variables separate from Preview until a production release is explicitly approved.
