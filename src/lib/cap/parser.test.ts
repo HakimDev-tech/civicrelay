@@ -169,7 +169,10 @@ describe("parseCapXml", () => {
   });
 
   it("does not mistake a commented fake root for the document root", () => {
-    const source = "<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->" + xml(info());
+    const source = xml(info()).replace(
+      "?>",
+      "?>\\n<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->",
+    );
     expect(parseCapXml(source).success).toBe(true);
   });
   it("rejects non-UTF-8 XML declarations", () => {
