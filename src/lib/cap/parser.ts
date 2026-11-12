@@ -190,7 +190,7 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
     issues.push({ code: "CAP_DATETIME_INVALID", message: "Expected an ISO 8601 date-time with seconds and an explicit timezone.", path, severity: "error" });
     return null;
   }
-  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , offsetHourText, offsetMinuteText] = match;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, offsetSign, offsetHourText, offsetMinuteText] = match;
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
@@ -199,6 +199,10 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
   const second = Number(secondText);
   const offsetHour = Number(offsetHourText);
   const offsetMinute = Number(offsetMinuteText);
+  if (offsetHour === 0 && offsetMinute === 0 && offsetSign !== "-") {
+    issues.push({ code: "CAP_DATETIME_INVALID", message: "OASIS CAP 1.2 requires UTC to be represented as -00:00; Z and +00:00 are not conformant.", path, severity: "error" });
+    return null;
+  }
 
   const daysInMonth = month >= 1 && month <= 12
     ? [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
