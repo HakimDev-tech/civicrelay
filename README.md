@@ -87,6 +87,7 @@ The server-side CAP module is under `src/lib/cap/`:
 - `ingest.ts` is a server-only transactional service for `Alert`, `Update`, and `Cancel` messages.
 - `fixtures/` contains a representative flood alert lifecycle in French and Arabic.
 - `parser.test.ts` contains parser regression tests, run by `pnpm test` and included in `pnpm check`.
+- `ingest.integration.test.ts` exercises the complete Alert → Update → Cancel lifecycle against a dedicated PostgreSQL test branch. It is skipped unless `CIVICRELAY_TEST_DATABASE_URL` is set.
 
 ### Operational ingestion policy
 
@@ -113,10 +114,15 @@ The server-side CAP module is under `src/lib/cap/`:
 - `src/lib/cap/fixtures/flood-update.xml` — revised warning referencing the initial message.
 - `src/lib/cap/fixtures/flood-cancel.xml` — cancellation referencing the current update.
 
-Run the full local checks with:
+Run the full checks with:
 
     pnpm check
     pnpm build
+
+Run the database-backed lifecycle test only against a dedicated disposable Neon branch (never the production `main` branch):
+
+    export CIVICRELAY_TEST_DATABASE_URL="<dedicated-test-branch-connection-string>"
+    pnpm test:integration
 
 
 ## Neon database configuration
