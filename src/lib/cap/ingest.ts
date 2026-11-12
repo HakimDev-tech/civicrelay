@@ -13,7 +13,7 @@ import {
   type Alert,
   type AlertVersion,
 } from "@/lib/db/schema";
-import { requireActiveMembership } from "@/lib/db/repositories/access";
+import { memberships, organizations } from "@/lib/db/schema";
 
 const inputSchema = z.object({
   organizationId: z.string().uuid(),
@@ -73,11 +73,6 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
   issues: ReturnType<typeof parseCapXml> extends infer R ? R extends { issues: infer I } ? I : never : never;
 }> {
   const request = inputSchema.parse(input);
-  await requireActiveMembership({
-    organizationId: request.organizationId,
-    membershipId: request.membershipId,
-    allowedRoles: editorRoles,
-  });
 
   const parsed = parseCapXml(request.xml, { requirePublicScope: true });
   if (!parsed.success) {
@@ -114,6 +109,28 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
 
   try {
     const result = await getDb().transaction(async (tx) => {
+      // Lock actor and organization rows so a concurrent suspension cannot race authorization.
+      const [actor] = await tx
+        .select({
+          role: memberships.role,
+          membershipStatus: memberships.status,
+          organizationStatus: organizations.status,
+        })
+        .from(memberships)
+        .innerJoin(organizations, eq(organizations.id, memberships.organizationId))
+        .where(and(
+          eq(memberships.id, request.membershipId),
+          eq(memberships.organizationId, request.organizationId),
+        ))
+        .for("update")
+        .limit(1);
+      if (!actor || actor.membershipStatus !== "active" || actor.organizationStatus !== "active") {
+        throw new DomainError("FORBIDDEN", "An active membership in an active organization is required.");
+      }
+      if (!editorRoles.includes(actor.role as typeof editorRoles[number])) {
+        throw new DomainError("FORBIDDEN", "This membership cannot ingest CAP messages.");
+      }
+
       let parentAlert: Alert | undefined;
       let outcome: IngestOutcome;
 
@@ -194,10 +211,19 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
         if (cap.sentAt <= latest.capSentAt) {
           throw new DomainError("CONFLICT", "An Update or Cancel must have a sent timestamp later than the version it references.");
         }
-        if (resolved[0].alert.status === "cancelled" || resolved[0].alert.status === "expired") {
+        const [currentParent] = await tx
+          .select()
+          .from(alerts)
+          .where(and(
+            eq(alerts.id, parentId),
+            eq(alerts.organizationId, request.organizationId),
+          ))
+          .limit(1);
+        if (!currentParent) throw new DomainError("NOT_FOUND", "Referenced alert no longer exists in this organization.");
+        if (currentParent.status === "cancelled" || currentParent.status === "expired") {
           throw new DomainError("CONFLICT", "A cancelled or expired alert cannot be updated.");
         }
-        parentAlert = resolved[0].alert;
+        parentAlert = currentParent;
         outcome = cap.messageType === "Update" ? "updated" : "cancelled";
       }
 
