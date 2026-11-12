@@ -26,7 +26,7 @@ const editorRoles = ["owner", "admin", "editor"] as const;
 type IngestOutcome = "created" | "updated" | "cancelled";
 
 function parseReference(reference: string): { sender: string; identifier: string; sentAt: Date } {
-  const parts = reference.split(",");
+  const parts = reference.split(",").map((part) => part.trim());
   if (parts.length !== 3) {
     throw new DomainError("VALIDATION_ERROR", "CAP reference must use sender,identifier,sent format.");
   }
@@ -86,6 +86,14 @@ export async function ingestCapXml(input: z.input<typeof inputSchema>): Promise<
     });
   }
   const cap = parsed.data;
+  if (cap.status !== "Actual") {
+    throw new DomainError("VALIDATION_ERROR", "Only CAP messages with status Actual can enter the operational public-alert workflow.", {
+      capStatus: cap.status,
+    });
+  }
+  if (cap.messageType === "Alert" && cap.infos.length === 0) {
+    throw new DomainError("VALIDATION_ERROR", "A new operational Alert must contain at least one info block.");
+  }
   if (cap.messageType === "Update" && cap.infos.length === 0) {
     throw new DomainError("VALIDATION_ERROR", "An Update must contain at least one info block with the revised public guidance.");
   }
