@@ -237,5 +237,5 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER publication_requires_approval BEFORE INSERT OR UPDATE OF approval_id, alert_version_id, organization_id, published_by_membership_id
+CREATE TRIGGER publication_requires_approval BEFORE INSERT OR UPDATE
 ON publication_links FOR EACH ROW EXECUTE FUNCTION civicrelay_require_approved_version();
