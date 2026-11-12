@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireSession } from "@/lib/auth/session";
 import { listActiveMembershipsForUser } from "@/lib/db/repositories/user-memberships";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { OrganizationInviteForm } from "@/components/organizations/organization-invite-form";
 
 export const metadata: Metadata = {
   title: "Workspace",
@@ -44,6 +45,9 @@ export default async function DashboardPage() {
                   <h3 className="font-semibold">{organization.name}</h3>
                   <p className="mt-2 text-sm text-muted">Role: {membership.role}</p>
                   <p className="mt-1 text-xs text-muted">Membership: {membership.status}</p>
+                  {(membership.role === "owner" || membership.role === "admin") && (
+                    <OrganizationInviteForm organizationId={organization.id} />
+                  )}
                 </li>
               ))}
             </ul>
