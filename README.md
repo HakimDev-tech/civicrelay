@@ -35,7 +35,31 @@ CivicRelay is a human-in-the-loop emergency communication platform. It takes aut
 
 Open http://localhost:3000.
 
-Before database-backed features are enabled, set DATABASE_URL in .env.local to the Neon connection string. Never commit .env.local.
+Before database-backed features are enabled, configure both Neon connection strings in .env.local:
+
+- DATABASE_URL: pooled connection string for application queries (hostname contains -pooler).
+- DATABASE_URL_UNPOOLED: direct connection string for schema migrations (hostname does not contain -pooler).
+
+Never commit .env.local or any real database credential.
+
+## Database
+
+- PostgreSQL is hosted on Neon; Drizzle ORM defines the typed application schema.
+- SQL migrations live in drizzle/ and are applied in filename order.
+- The migration runner uses DATABASE_URL_UNPOOLED, a transaction-scoped advisory lock, and SHA-256 checksums. Applied migration files must never be edited; add a new migration instead.
+- Application code obtains the server-only database client through getDb() from src/lib/db.
+- Tenant ownership is represented explicitly by organization_id and composite foreign keys. The browser must never connect directly to PostgreSQL.
+- Original CAP XML and its parsed payload are retained per immutable alert version. Publication records reference the exact approved version.
+- Public access tokens are stored only as SHA-256 hashes. Public endpoints must check active publication status and expiry.
+- Authentication is provider-agnostic at the data-model boundary: users.auth_subject stores the external identity subject; no password credentials are stored here.
+
+Apply pending migrations with:
+
+    pnpm db:migrate
+
+Open Drizzle Studio with:
+
+    pnpm db:studio
 
 ## Quality checks
 
