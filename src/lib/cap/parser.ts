@@ -110,6 +110,8 @@ const SCOPES = ["Public", "Restricted", "Private"] as const;
 const SEVERITIES = ["Extreme", "Severe", "Moderate", "Minor", "Unknown"] as const;
 const URGENCIES = ["Immediate", "Expected", "Future", "Past", "Unknown"] as const;
 const CERTAINTIES = ["Observed", "Likely", "Possible", "Unlikely", "Unknown"] as const;
+const CATEGORIES = ["Geo", "Met", "Safety", "Security", "Rescue", "Fire", "Health", "Env", "Transport", "Infra", "CBRNE", "Other"] as const;
+const RESPONSE_TYPES = ["Shelter", "Evacuate", "Prepare", "Execute", "Avoid", "Monitor", "Assess", "AllClear", "None"] as const;
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -180,9 +182,26 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
     if (required) issues.push({ code: "CAP_REQUIRED_FIELD", message: "Required date-time is missing.", path, severity: "error" });
     return null;
   }
-  // CAP timestamps must be unambiguous: ISO 8601 date-time with an explicit UTC offset.
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(raw)) {
+  // CAP timestamps must be unambiguous RFC 3339 date-times with an explicit UTC offset.
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|([+-])(\d{2}):?(\d{2}))$/.exec(raw);
+  if (!match) {
     issues.push({ code: "CAP_DATETIME_INVALID", message: "Expected an ISO 8601 date-time with seconds and an explicit timezone.", path, severity: "error" });
+    return null;
+  }
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , , offsetHourText, offsetMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const offsetHour = offsetHourText ? Number(offsetHourText) : 0;
+  const offsetMinute = offsetMinuteText ? Number(offsetMinuteText) : 0;
+  const daysInMonth = month >= 1 && month <= 12
+    ? [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    : 0;
+  if (day < 1 || day > daysInMonth || hour > 23 || minute > 59 || second > 59 || offsetHour > 23 || offsetMinute > 59) {
+    issues.push({ code: "CAP_DATETIME_INVALID", message: "Date-time contains an out-of-range calendar, clock, or timezone component.", path, severity: "error" });
     return null;
   }
   const date = new Date(raw);
@@ -337,9 +356,15 @@ function parseInfo(value: unknown, index: number, issues: CapIssue[]): CapInfo {
   const info = asRecord(value);
   const path = `/alert/info[${index}]`;
   const categories = asArray(info.category).map(textValue).filter(Boolean);
-  if (categories.length === 0) issues.push({ code: "CAP_REQUIRED_FIELD", message: "At least one category is required in an info block.", path: `${path}/category`, severity: "error" });
+  if (categories.length === 0) issues.push({ code: "CAP_REQUIRED_FIELD", message: "At least one category is required in an info block.", path: path + "/category", severity: "error" });
+  for (const category of categories) {
+    if (!CATEGORIES.includes(category as typeof CATEGORIES[number])) {
+      issues.push({ code: "CAP_CATEGORY_INVALID", message: "Unsupported CAP category " + category + ".", path: path + "/category", severity: "error" });
+    }
+  }
   const event = childText(info, "event");
-  if (!event) issues.push({ code: "CAP_REQUIRED_FIELD", message: "event is required in an info block.", path: `${path}/event`, severity: "error" });
+  if (!event) issues.push({ code: "CAP_REQUIRED_FIELD", message: "event is required in an info block.", path: path + "/event", severity: "error" });
+  if (event.length > 255) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "event exceeds the 255-character application limit.", path: path + "/event", severity: "error" });
 
   const urgency = enumValue(info.urgency, URGENCIES, "Unknown", `${path}/urgency`, issues);
   const severity = enumValue(info.severity, SEVERITIES, "Unknown", `${path}/severity`, issues);
@@ -355,6 +380,23 @@ function parseInfo(value: unknown, index: number, issues: CapIssue[]): CapInfo {
     issues.push({ code: "CAP_INFO_ONSET_RANGE_INVALID", message: "expires must be later than onset.", path, severity: "error" });
   }
 
+  const responseTypes = asArray(info.responseType).map(textValue).filter(Boolean);
+  for (const responseType of responseTypes) {
+    if (!RESPONSE_TYPES.includes(responseType as typeof RESPONSE_TYPES[number])) {
+      issues.push({ code: "CAP_RESPONSE_TYPE_INVALID", message: "Unsupported CAP responseType " + responseType + ".", path: path + "/responseType", severity: "error" });
+    }
+  }
+  const language = optionalText(info.language) ?? "en-US";
+  try { Intl.getCanonicalLocales(language); } catch {
+    issues.push({ code: "CAP_LANGUAGE_INVALID", message: "Invalid BCP 47 language tag " + language + ".", path: path + "/language", severity: "error" });
+  }
+  const headline = optionalText(info.headline);
+  const description = optionalText(info.description);
+  const instruction = optionalText(info.instruction);
+  if (headline && headline.length > 500) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "headline exceeds the 500-character application limit.", path: path + "/headline", severity: "error" });
+  if (description && description.length > 10000) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "description exceeds the 10,000-character application limit.", path: path + "/description", severity: "error" });
+  if (instruction && instruction.length > 10000) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "instruction exceeds the 10,000-character application limit.", path: path + "/instruction", severity: "error" });
+
   const parameters = asArray(info.parameter).map((item, parameterIndex) => {
     const parameter = asRecord(item);
     const name = childText(parameter, "valueName");
@@ -366,10 +408,10 @@ function parseInfo(value: unknown, index: number, issues: CapIssue[]): CapInfo {
   });
 
   return {
-    language: optionalText(info.language) ?? "en-US",
+    language,
     categories,
     event,
-    responseTypes: asArray(info.responseType).map(textValue).filter(Boolean),
+    responseTypes,
     urgency,
     severity,
     certainty,
@@ -378,9 +420,9 @@ function parseInfo(value: unknown, index: number, issues: CapIssue[]): CapInfo {
     onset: onsetDate?.toISOString() ?? null,
     expires: expiresDate?.toISOString() ?? null,
     senderName: optionalText(info.senderName),
-    headline: optionalText(info.headline),
-    description: optionalText(info.description),
-    instruction: optionalText(info.instruction),
+    headline,
+    description,
+    instruction,
     web: optionalText(info.web),
     contact: optionalText(info.contact),
     parameters,
@@ -392,6 +434,19 @@ function parseInfo(value: unknown, index: number, issues: CapIssue[]): CapInfo {
 function splitReferences(value: unknown): string[] {
   const raw = optionalText(value);
   return raw ? raw.split(/\s+/).filter(Boolean) : [];
+}
+
+function validateReference(reference: string, index: number, issues: CapIssue[]): void {
+  const path = "/alert/references[" + index + "]";
+  const parts = reference.split(",");
+  if (parts.length !== 3 || !parts[0].trim() || !parts[1].trim()) {
+    issues.push({ code: "CAP_REFERENCE_INVALID", message: "Each reference must use sender,identifier,sent format.", path, severity: "error" });
+    return;
+  }
+  if (parts[0].length > 255 || parts[1].length > 255) {
+    issues.push({ code: "CAP_REFERENCE_INVALID", message: "Reference sender and identifier must not exceed 255 characters.", path, severity: "error" });
+  }
+  parseCapDate(parts[2], path + "/sent", issues, true);
 }
 
 function makeRepositoryProjection(
@@ -479,7 +534,9 @@ export function parseCapXml(xml: string, options: ParseCapOptions = {}): CapPars
   const sender = childText(root, "sender");
   const sentRaw = childText(root, "sent");
   if (!identifier) issues.push({ code: "CAP_REQUIRED_FIELD", message: "identifier is required.", path: "/alert/identifier", severity: "error" });
+  else if (identifier.length > 255) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "identifier exceeds the 255-character application limit.", path: "/alert/identifier", severity: "error" });
   if (!sender) issues.push({ code: "CAP_REQUIRED_FIELD", message: "sender is required.", path: "/alert/sender", severity: "error" });
+  else if (sender.length > 255) issues.push({ code: "CAP_FIELD_TOO_LONG", message: "sender exceeds the 255-character application limit.", path: "/alert/sender", severity: "error" });
   const sentAt = parseCapDate(sentRaw, "/alert/sent", issues, true);
   const status = enumValue(root.status, STATUSES, "Draft", "/alert/status", issues);
   const messageType = enumValue(root.msgType, MESSAGE_TYPES, "Alert", "/alert/msgType", issues);
@@ -498,6 +555,7 @@ export function parseCapXml(xml: string, options: ParseCapOptions = {}): CapPars
   }
 
   const references = splitReferences(root.references);
+  references.forEach((reference, index) => validateReference(reference, index, issues));
   if ((messageType === "Update" || messageType === "Cancel") && references.length === 0) {
     issues.push({ code: "CAP_REFERENCES_REQUIRED", message: `${messageType} messages must identify the message(s) they update or cancel.`, path: "/alert/references", severity: "error" });
   }
