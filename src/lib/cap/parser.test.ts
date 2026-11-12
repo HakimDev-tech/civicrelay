@@ -171,7 +171,7 @@ describe("parseCapXml", () => {
   it("does not mistake a commented fake root for the document root", () => {
     const source = xml(info()).replace(
       "?>",
-      "?>\\n<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->",
+      "?>\n<!-- <alert xmlns=\"" + "urn:wrong" + "\"> -->",
     );
     expect(parseCapXml(source).success).toBe(true);
   });
