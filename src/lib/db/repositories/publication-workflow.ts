@@ -113,7 +113,8 @@ export async function publishAlertVersion(input: {
     allowedRoles: publisherRoles,
   });
 
-  if (expiresAt && expiresAt <= new Date()) {
+  const now = new Date();
+  if (expiresAt && expiresAt <= now) {
     throw new DomainError("VALIDATION_ERROR", "Publication expiry must be in the future.");
   }
 
@@ -130,6 +131,7 @@ export async function publishAlertVersion(input: {
           capStatus: alertVersions.capStatus,
           alertStatus: alerts.status,
           organizationStatus: organizations.status,
+          alertExpiresAt: alerts.expiresAt,
         })
         .from(alertVersions)
         .innerJoin(alerts, and(
@@ -152,6 +154,9 @@ export async function publishAlertVersion(input: {
       }
       if (version.alertStatus !== "approved" && version.alertStatus !== "published") {
         throw new DomainError("INVARIANT_VIOLATION", "The alert must be approved before publication.");
+      }
+      if (version.alertExpiresAt && version.alertExpiresAt <= now) {
+        throw new DomainError("INVARIANT_VIOLATION", "An already expired CAP alert cannot be published.");
       }
       const [latestVersion] = await tx
         .select({ id: alertVersions.id })
