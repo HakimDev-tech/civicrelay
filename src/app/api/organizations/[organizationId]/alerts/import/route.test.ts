@@ -11,6 +11,9 @@ vi.mock("@/lib/auth/authorization", () => ({
 vi.mock("@/lib/cap/ingest", () => ({
   ingestCapXml: vi.fn(),
 }));
+vi.mock("@/lib/security/rate-limit", () => ({
+  enforceSharedRateLimit: vi.fn(),
+}));
 
 const organizationId = "6e6f2a7c-9d42-4c79-9f3b-9a8a64e5c321";
 const membershipId = "5b7f4f26-7c45-49b4-b0f4-9f8b0a9f3e12";
@@ -60,7 +63,8 @@ describe("POST /api/organizations/:organizationId/alerts/import", () => {
     vi.mocked(requireCurrentUserOrganizationAccess).mockResolvedValue({
       membership: { id: membershipId },
     } as never);
-    vi.mocked(ingestCapXml).mockResolvedValue(successfulIngestion as never);\n    vi.mocked(enforceSharedRateLimit).mockResolvedValue();
+    vi.mocked(ingestCapXml).mockResolvedValue(successfulIngestion as never);
+    vi.mocked(enforceSharedRateLimit).mockResolvedValue();
     delete process.env.CAP_MAX_PAYLOAD_BYTES;
   });
 
