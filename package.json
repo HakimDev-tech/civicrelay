@@ -12,8 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check": "pnpm lint && pnpm typecheck",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -21,7 +20,8 @@
     "next": "^16.4.6",
     "pg": "^8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
