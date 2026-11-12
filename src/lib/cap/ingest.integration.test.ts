@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { approveAlertVersion, getPublicAlertByToken, publishAlertVersion } from "@/lib/db/repositories/publication-workflow";
+import { approveAlertVersion, getPublicAlertByToken, publishAlertVersion, recordPublicAcknowledgement, submitPublicFeedback } from "@/lib/db/repositories/publication-workflow";
 import { ingestCapXml } from "@/lib/cap/ingest";
 import { closeDb, getDb } from "@/lib/db";
-import { alerts, memberships, organizations, publicationLinks, users } from "@/lib/db/schema";
+import { acknowledgements, alerts, feedback, memberships, organizations, publicationLinks, users } from "@/lib/db/schema";
 
 const databaseUrl = process.env.CIVICRELAY_TEST_DATABASE_URL;
 const integration = describe.skipIf(!databaseUrl);
@@ -81,6 +81,15 @@ integration("CAP ingestion lifecycle (dedicated Neon test branch)", () => {
     });
     expect(await getPublicAlertByToken(firstPublication.publicToken)).not.toBeNull();
 
+    const acknowledgement = await recordPublicAcknowledgement({ token: firstPublication.publicToken, type: "received" });
+    const publicFeedback = await submitPublicFeedback({
+      token: firstPublication.publicToken,
+      category: "accessibility_issue",
+      message: "The guidance needs a clearer location description.",
+    });
+    expect(acknowledgement?.type).toBe("received");
+    expect(publicFeedback?.category).toBe("accessibility_issue");
+
     const update = await ingestCapXml({
       organizationId,
       membershipId: editorMembershipId,
@@ -115,6 +124,10 @@ integration("CAP ingestion lifecycle (dedicated Neon test branch)", () => {
 
     const db = getDb();
     const storedLinks = await db.select().from(publicationLinks).where(eq(publicationLinks.organizationId, organizationId));
+    const storedAcknowledgements = await db.select().from(acknowledgements).where(eq(acknowledgements.publicationLinkId, firstPublication.publication.id));
+    const storedFeedback = await db.select().from(feedback).where(eq(feedback.publicationLinkId, firstPublication.publication.id));
+    expect(storedAcknowledgements).toHaveLength(1);
+    expect(storedFeedback).toHaveLength(1);
     expect(storedLinks).toHaveLength(2);
     expect(storedLinks.every((link) => link.status === "revoked")).toBe(true);
     const [storedAlert] = await db.select().from(alerts).where(eq(alerts.id, initial.alert.id)).limit(1);
