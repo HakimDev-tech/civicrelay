@@ -9,9 +9,8 @@ import {
   verificationEmailText,
 } from "./email";
 
-const trustedOrigins = [process.env.BETTER_AUTH_URL].filter(
-  (origin): origin is string => Boolean(origin),
-);
+const authBaseURL = process.env.BETTER_AUTH_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
 
 function createAuth() {
   const secret = process.env.BETTER_AUTH_SECRET;
@@ -22,10 +21,9 @@ function createAuth() {
   return betterAuth({
     appName: "CivicRelay",
     secret,
-    ...(process.env.BETTER_AUTH_URL
-      ? { baseURL: process.env.BETTER_AUTH_URL }
+    ...(authBaseURL
+      ? { baseURL: authBaseURL, trustedOrigins: [authBaseURL] }
       : {}),
-    trustedOrigins,
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
