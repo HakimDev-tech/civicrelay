@@ -29,6 +29,13 @@
       "when": 1794502980000,
       "tag": "0003_latest_version_publication_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794503040000,
+      "tag": "0004_authentication",
+      "breakpoints": true
     }
   ]
 }
