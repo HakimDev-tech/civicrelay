@@ -77,3 +77,24 @@ Open Drizzle Studio with:
 ## Status
 
 Foundation setup. CAP ingestion, domain model, persistence, authentication, approval workflows, and public acknowledgement flows are implemented in subsequent milestones.
+
+
+## Neon database configuration
+
+1. In the Neon console, open the `civicrelay` project and select the `main` branch.
+2. Copy the **pooled** connection string for application traffic into `DATABASE_URL`.
+3. Copy the **direct / unpooled** connection string into `DATABASE_URL_UNPOOLED`; the migration runner uses this connection.
+4. Keep both values only in `.env.local` locally and in the deployment platform's encrypted environment-variable settings. Never commit either value.
+
+The application database client is server-only. Import it from `@/lib/db` only in Server Components, Route Handlers, Server Actions, or other server-side modules. Never expose database URLs or credentials to browser code.
+
+### Database commands
+
+- `pnpm db:migrate` — apply pending SQL migrations (direct connection required).
+- `pnpm db:studio` — open Drizzle Studio.
+
+### Repository security contract
+
+Repository functions accept an organization ID and membership ID so authorization can be checked against PostgreSQL. Route handlers must obtain the authenticated user from the trusted authentication provider, resolve their active membership server-side, and pass that membership ID to the repository. **Never accept a membership ID or organization ID as proof of identity from an untrusted request body.**
+
+All alert and alert-version queries are scoped to an organization. Alert versions preserve the original CAP XML and SHA-256 digest and are immutable in PostgreSQL; corrections must create a new version.
