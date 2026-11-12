@@ -79,7 +79,9 @@ integration("CAP ingestion lifecycle (dedicated Neon test branch)", () => {
       alertVersionId: initial.version.id,
       approvalId: firstApproval.id,
     });
-    expect(await getPublicAlertByToken(firstPublication.publicToken)).not.toBeNull();
+    const publicAlert = await getPublicAlertByToken(firstPublication.publicToken);
+    expect(publicAlert).not.toBeNull();
+    expect(publicAlert?.areas.length).toBeGreaterThan(0);
 
     const acknowledgement = await recordPublicAcknowledgement({ token: firstPublication.publicToken, type: "received" });
     const publicFeedback = await submitPublicFeedback({
