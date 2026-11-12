@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
-import { memberships, type Membership } from "@/lib/db/schema";
+import { memberships, organizations, type Membership } from "@/lib/db/schema";
 
 export type MembershipRole = Membership["role"];
 
@@ -11,18 +11,21 @@ export async function requireActiveMembership(input: {
   membershipId: string;
   allowedRoles?: readonly MembershipRole[];
 }): Promise<Membership> {
-  const [membership] = await getDb()
-    .select()
+  const [result] = await getDb()
+    .select({ membership: memberships })
     .from(memberships)
+    .innerJoin(organizations, eq(organizations.id, memberships.organizationId))
     .where(and(
       eq(memberships.id, input.membershipId),
       eq(memberships.organizationId, input.organizationId),
       eq(memberships.status, "active"),
+      eq(organizations.status, "active"),
     ))
     .limit(1);
 
+  const membership = result?.membership;
   if (!membership) {
-    throw new DomainError("FORBIDDEN", "An active membership in this organization is required.");
+    throw new DomainError("FORBIDDEN", "An active membership in an active organization is required.");
   }
 
   if (input.allowedRoles && !input.allowedRoles.includes(membership.role)) {
