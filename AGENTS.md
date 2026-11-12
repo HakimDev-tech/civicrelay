@@ -57,3 +57,9 @@ CivicRelay transforms authoritative Common Alerting Protocol (CAP) messages into
 - Public alert pages must query through the active-publication repository and exclude raw CAP XML and internal identifiers.
 - Public acknowledgement/feedback routes must validate the capability token, apply shared rate limits, bound request bodies, and state clearly that submissions do not contact emergency services or guarantee a response.
 - Use no-referrer/noindex behavior for capability-token pages to reduce token leakage.
+
+## Initial organization provisioning
+- Do not expose organization creation or owner assignment through public sign-up/API flows.
+- Bootstrap an organization only after manual verification and explicit operator approval.
+- The bootstrap script must require a previously registered, email-verified account and create organization + initial owner membership atomically.
+- Never run organization provisioning or production migrations without explicit user approval.
