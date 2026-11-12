@@ -190,7 +190,7 @@ function parseCapDate(value: unknown, path: string, issues: CapIssue[], required
     issues.push({ code: "CAP_DATETIME_INVALID", message: "Expected an ISO 8601 date-time with seconds and an explicit timezone.", path, severity: "error" });
     return null;
   }
-  const [, yearText, monthText, dayText, hourText, minuteText, secondText, offsetSign, offsetHourText, offsetMinuteText] = match;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , offsetHourText, offsetMinuteText] = match;
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
