@@ -15,7 +15,7 @@ function createPool(): Pool {
 
   return new Pool({
     connectionString,
-    max: 5,
+    max: 3,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
     allowExitOnIdle: true,
@@ -24,11 +24,6 @@ function createPool(): Pool {
 }
 
 export function getDb(): Database {
-  if (process.env.NODE_ENV !== "production") {
-    const pool = globalForDb.__civicRelayPool ?? (globalForDb.__civicRelayPool = createPool());
-    return globalForDb.__civicRelayDb ?? (globalForDb.__civicRelayDb = drizzle(pool, { schema }));
-  }
-
   const pool = globalForDb.__civicRelayPool ?? (globalForDb.__civicRelayPool = createPool());
   return globalForDb.__civicRelayDb ?? (globalForDb.__civicRelayDb = drizzle(pool, { schema }));
 }
