@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireCurrentUserOrganizationAccess } from "@/lib/auth/authorization";
 import { ingestCapXml } from "@/lib/cap/ingest";
 import { DomainError } from "@/lib/domain/errors";
+import { enforceSharedRateLimit } from "@/lib/security/rate-limit";
 
 const organizationIdSchema = z.string().uuid();
 const editorRoles = ["owner", "admin", "editor"] as const;
@@ -94,6 +95,7 @@ function errorResponse(error: unknown) {
       NOT_FOUND: 404,
       CONFLICT: 409,
       INVARIANT_VIOLATION: 500,
+      RATE_LIMITED: 429,
     } as const;
     return jsonError(
       error.code === "INVARIANT_VIOLATION" ? "An internal consistency error occurred." : error.message,
@@ -129,6 +131,8 @@ export async function POST(
       organizationId,
       allowedRoles: editorRoles,
     });
+
+    await enforceSharedRateLimit({ key: `cap-import:${membership.id}`, limit: 10, windowSeconds: 60 });
 
     const xml = await readBoundedUtf8(request, maxPayloadBytes());
     const result = await ingestCapXml({
