@@ -20,6 +20,9 @@ integration("CAP ingestion lifecycle (dedicated Neon test branch)", () => {
   beforeAll(async () => {
     if (!databaseUrl) throw new Error("CIVICRELAY_TEST_DATABASE_URL is required.");
     if (process.env.NODE_ENV === "production") throw new Error("Integration tests must never run in production.");
+    if (process.env.CIVICRELAY_TEST_DATABASE_CONFIRMATION !== "ISOLATED_BRANCH") {
+      throw new Error("Set CIVICRELAY_TEST_DATABASE_CONFIRMATION=ISOLATED_BRANCH only after verifying this is a disposable Neon branch.");
+    }
     process.env.DATABASE_URL = databaseUrl;
 
     const db = getDb();
