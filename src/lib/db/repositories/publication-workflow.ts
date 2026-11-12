@@ -13,6 +13,7 @@ import {
   publicationLinks,
   acknowledgements,
   organizations,
+  memberships,
 } from "@/lib/db/schema";
 import { requireActiveMembership } from "./access";
 
@@ -39,6 +40,36 @@ export async function approveAlertVersion(input: {
   });
 
   return getDb().transaction(async (tx) => {
+    const [versionRef] = await tx
+      .select({ alertId: alertVersions.alertId })
+      .from(alertVersions)
+      .where(and(
+        eq(alertVersions.id, alertVersionId),
+        eq(alertVersions.organizationId, organizationId),
+      ))
+      .limit(1);
+    if (!versionRef) throw new DomainError("NOT_FOUND", "Alert version not found.");
+
+    const [actor] = await tx
+      .select({
+        role: memberships.role,
+        membershipStatus: memberships.status,
+        organizationStatus: organizations.status,
+      })
+      .from(memberships)
+      .innerJoin(organizations, eq(organizations.id, memberships.organizationId))
+      .where(and(
+        eq(memberships.id, membershipId),
+        eq(memberships.organizationId, organizationId),
+      ))
+      .for("update")
+      .limit(1);
+    if (!actor || actor.membershipStatus !== "active" || actor.organizationStatus !== "active" ||
+        !reviewerRoles.includes(actor.role as typeof reviewerRoles[number])) {
+      throw new DomainError("FORBIDDEN", "An active reviewer membership in an active organization is required.");
+    }
+
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${versionRef.alertId}))`);
     const [version] = await tx
       .select({
         id: alertVersions.id,
@@ -56,11 +87,9 @@ export async function approveAlertVersion(input: {
         eq(alertVersions.id, alertVersionId),
         eq(alertVersions.organizationId, organizationId),
       ))
-      .for("update")
       .limit(1);
 
     if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${version.alertId}))`);
     if (version.capMessageType === "Cancel" || version.alertStatus === "cancelled" || version.alertStatus === "expired") {
       throw new DomainError("INVARIANT_VIOLATION", "Cancelled or expired alert versions cannot be approved.");
     }
@@ -162,6 +191,36 @@ export async function publishAlertVersion(input: {
 
   try {
     const result = await getDb().transaction(async (tx) => {
+      const [versionRef] = await tx
+        .select({ alertId: alertVersions.alertId })
+        .from(alertVersions)
+        .where(and(
+          eq(alertVersions.id, alertVersionId),
+          eq(alertVersions.organizationId, organizationId),
+        ))
+        .limit(1);
+      if (!versionRef) throw new DomainError("NOT_FOUND", "Alert version not found.");
+
+      const [actor] = await tx
+        .select({
+          role: memberships.role,
+          membershipStatus: memberships.status,
+          organizationStatus: organizations.status,
+        })
+        .from(memberships)
+        .innerJoin(organizations, eq(organizations.id, memberships.organizationId))
+        .where(and(
+          eq(memberships.id, membershipId),
+          eq(memberships.organizationId, organizationId),
+        ))
+        .for("update")
+        .limit(1);
+      if (!actor || actor.membershipStatus !== "active" || actor.organizationStatus !== "active" ||
+          !publisherRoles.includes(actor.role as typeof publisherRoles[number])) {
+        throw new DomainError("FORBIDDEN", "An active publisher membership in an active organization is required.");
+      }
+
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${versionRef.alertId}))`);
       const [version] = await tx
         .select({
           id: alertVersions.id,
@@ -182,11 +241,9 @@ export async function publishAlertVersion(input: {
           eq(alertVersions.id, alertVersionId),
           eq(alertVersions.organizationId, organizationId),
         ))
-        .for("update")
         .limit(1);
 
       if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${version.alertId}))`);
       if (version.organizationStatus !== "active") {
         throw new DomainError("FORBIDDEN", "Suspended organizations cannot publish alerts.");
       }
