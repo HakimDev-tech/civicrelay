@@ -76,7 +76,7 @@ Open Drizzle Studio with:
 
 ## Status
 
-The database foundation, CAP parser, transactional ingestion service, review/publication repositories, authenticated CAP import API, and automated tests are implemented. Better Auth is integrated for email/password authentication, email verification, password resets, and server-side session resolution. Organization membership remains separately controlled by CivicRelay; signing up never grants access to an organization.
+The database foundation, CAP parser, transactional ingestion service, review/publication repositories, authenticated CAP import API, organization invitations, and automated tests are implemented. Better Auth is integrated for email/password authentication, email verification, password resets, and server-side session resolution. Organization membership remains separately controlled by CivicRelay; signing up never grants access to an organization.
 
 
 ## CAP 1.2 ingestion
@@ -107,7 +107,7 @@ The server-side CAP module is under `src/lib/cap/`:
 - Original XML is stored unchanged alongside its parsed payload and SHA-256 digest.
 - Version allocation is serialized per alert; ingestion locks the active membership and organization during the write transaction.
 - Publication lifecycle constraints are enforced in PostgreSQL as well as in the application service. Revoked/expired links cannot be reactivated.
-- The parser and ingestion service are server-side modules. The authenticated import endpoint is `POST /api/organizations/:organizationId/alerts/import`; it accepts raw CAP XML with `application/cap+xml`, `application/xml`, or `text/xml` content types.\n- The endpoint requires a same-origin request, resolves the active user membership from the verified Better Auth session, and permits only owner/admin/editor roles. The organization ID is a route selector only; membership and role are independently checked server-side.\n- Request bodies are streamed with a hard byte limit before XML parsing. A PostgreSQL-backed atomic rate limiter allows at most 10 import attempts per membership per 60 seconds across serverless instances.\n- The endpoint returns alert/version metadata and parser issues, never the stored source XML or full parsed CAP payload.
+- The parser and ingestion service are server-side modules. The authenticated import endpoint is `POST /api/organizations/:organizationId/alerts/import`; it accepts raw CAP XML with `application/cap+xml`, `application/xml`, or `text/xml` content types.\n- The endpoint requires a same-origin request, resolves the active user membership from the verified Better Auth session, and permits only owner/admin/editor roles. The organization ID is a route selector only; membership and role are independently checked server-side.\n- Request bodies are streamed with a hard byte limit before XML parsing. A PostgreSQL-backed atomic rate limiter allows at most 10 import attempts per membership per 60 seconds across serverless instances.\n- The endpoint returns alert/version metadata and parser issues, never the stored source XML or full parsed CAP payload.\n- Organization owners/admins can issue invitations through `POST /api/organizations/:organizationId/invitations`; invitation tokens are random, single-use, stored only as SHA-256 hashes, and expire after seven days.\n- Invitees must sign in with the invited email, verify that address, and accept through `POST /api/invitations/accept`. The acceptance transaction activates only the assigned non-owner role and records an audit event. Invitation delivery failure revokes the pending invitation.\n- The dashboard exposes the invitation form only to owners/admins. Owner privileges cannot be granted through invitations.
 
 ### CAP fixtures
 
@@ -155,8 +155,8 @@ All alert and alert-version queries are scoped to an organization. Alert version
 - Set `BETTER_AUTH_SECRET` to a unique secret of at least 32 characters. Generate one with `openssl rand -base64 32`.
 - Set `BETTER_AUTH_URL` to the canonical application origin in production. It may be omitted for Vercel Preview deployments so the request origin can be inferred.
 - `src/proxy.ts` performs a lightweight session-cookie check for dashboard navigation. Protected server operations must still call `auth.api.getSession()` and resolve the current user's active organization membership from PostgreSQL.
-- A new account receives **no organization membership by default**. An authorized organization owner/admin must provision membership and role. Never accept user, organization, or membership IDs from the browser as proof of authorization.
-- Authentication tables are added by `drizzle/0004_authentication.sql`; shared API rate-limit storage is added by `drizzle/0005_api_rate_limits.sql`. Both migrations are committed but have **not** been applied to Neon main.
+- A new account receives **no organization membership by default**. An authorized organization owner/admin must issue an invitation; the invited user must accept it with the matching verified email. Owner privileges cannot be assigned through invitations. Never accept user, organization, or membership IDs from the browser as proof of authorization.
+- Authentication tables are added by `drizzle/0004_authentication.sql`; shared API rate-limit storage is added by `drizzle/0005_api_rate_limits.sql`; organization invitations are added by `drizzle/0006_organization_invitations.sql`. These migrations are committed but have **not** been applied to Neon main.
 
 ### Authentication environment variables
 
