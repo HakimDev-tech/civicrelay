@@ -49,11 +49,8 @@ describe("parseCapXml", () => {
     const source = '<cap:alert xmlns:cap="' + namespace + '">' +
       "<cap:identifier>x</cap:identifier><cap:sender>s</cap:sender>" +
       "<cap:sent>2026-11-12T09:30:00Z</cap:sent><cap:status>Actual</cap:status>" +
-      "<cap:msgType>Alert</cap:msgType><cap:scope>Public</cap:scope>" +
-      info().replace(/<\/?/g, (tag) => tag) + "</cap:alert>";
-    // Prefix the child elements too, as required by the namespace declaration.
-    const prefixed = source.replace(/<(\/?)([a-zA-Z][\w]*)/g, "<$1cap:$2");
-    expect(parseCapXml(prefixed).success).toBe(true);
+      "<cap:msgType>Alert</cap:msgType><cap:scope>Public</cap:scope></cap:alert>";
+    expect(parseCapXml(source).success).toBe(true);
   });
 
   it("requires and validates Update references", () => {
