@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { DomainError } from "@/lib/domain/errors";
 import { getDb } from "@/lib/db";
@@ -11,6 +11,7 @@ import {
   feedback,
   publicationLinks,
   acknowledgements,
+  organizations,
 } from "@/lib/db/schema";
 import { requireActiveMembership } from "./access";
 
@@ -97,8 +98,16 @@ export async function publishAlertVersion(input: {
   try {
     const result = await getDb().transaction(async (tx) => {
       const [version] = await tx
-        .select({ id: alertVersions.id, alertId: alertVersions.alertId })
+        .select({
+          id: alertVersions.id,
+          alertId: alertVersions.alertId,
+          alertStatus: alerts.status,
+        })
         .from(alertVersions)
+        .innerJoin(alerts, and(
+          eq(alerts.id, alertVersions.alertId),
+          eq(alerts.organizationId, alertVersions.organizationId),
+        ))
         .where(and(
           eq(alertVersions.id, alertVersionId),
           eq(alertVersions.organizationId, organizationId),
@@ -106,6 +115,9 @@ export async function publishAlertVersion(input: {
         .limit(1);
 
       if (!version) throw new DomainError("NOT_FOUND", "Alert version not found.");
+      if (version.alertStatus === "cancelled" || version.alertStatus === "expired") {
+        throw new DomainError("INVARIANT_VIOLATION", "Cancelled or expired alerts cannot be published.");
+      }
 
       const [link] = await tx.insert(publicationLinks).values({
         organizationId,
@@ -183,7 +195,7 @@ export async function getPublicAlertByToken(token: string) {
       certainty: alerts.certainty,
       effectiveAt: alerts.effectiveAt,
       expiresAt: alerts.expiresAt,
-      organizationName: (await import("@/lib/db/schema")).organizations.name,
+      organizationName: organizations.name,
     })
     .from(publicationLinks)
     .innerJoin(alertVersions, eq(alertVersions.id, publicationLinks.alertVersionId))
@@ -191,12 +203,14 @@ export async function getPublicAlertByToken(token: string) {
       eq(alerts.id, alertVersions.alertId),
       eq(alerts.organizationId, publicationLinks.organizationId),
     ))
-    .innerJoin((await import("@/lib/db/schema")).organizations, eq((await import("@/lib/db/schema")).organizations.id, publicationLinks.organizationId))
+    .innerJoin(organizations, eq(organizations.id, publicationLinks.organizationId))
     .where(and(
       eq(publicationLinks.publicTokenHash, tokenHash),
       eq(publicationLinks.status, "active"),
       or(isNull(publicationLinks.expiresAt), gt(publicationLinks.expiresAt, now)),
       or(isNull(alerts.expiresAt), gt(alerts.expiresAt, now)),
+      ne(alerts.status, "cancelled"),
+      ne(alerts.status, "expired"),
     ))
     .limit(1);
 
