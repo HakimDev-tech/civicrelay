@@ -164,4 +164,4 @@ See `.env.example`. Keep all values in encrypted Vercel environment variables or
 
 ### Operational security note
 
-Rate limiting is enabled with PostgreSQL-backed shared storage, including stricter rules for sign-in, sign-up, password reset, and verification requests. Verify email deliverability, SPF, DKIM, and DMARC for the sending domain before public registration.
+Rate limiting is enabled with PostgreSQL-backed shared storage, including stricter rules for sign-in, sign-up, password reset, and verification requests. GitHub Actions also provisions an ephemeral PostgreSQL service, applies all SQL migrations, and runs the CAP and authentication integration suites. Verify email deliverability, SPF, DKIM, and DMARC for the sending domain before public registration.
