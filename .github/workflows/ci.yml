@@ -26,8 +26,10 @@ jobs:
         uses: pnpm/action-setup@v4
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check migration runner syntax
-        run: node --check scripts/migrate.mjs
+      - name: Check migration and provisioning scripts syntax
+        run: |
+          node --check scripts/migrate.mjs
+          node --check scripts/provision-organization.mjs
       - name: Lint, typecheck, tests, and migration journal
         run: pnpm check
       - name: Build
