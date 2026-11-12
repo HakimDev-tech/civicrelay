@@ -57,7 +57,7 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
       BETTER_AUTH_URL: http://localhost:3000
       RESEND_API_KEY: re_test_only
-      AUTH_EMAIL_FROM: CivicRelay\ CI <no-reply@example.test>
+      AUTH_EMAIL_FROM: "CivicRelay CI <no-reply@example.test>"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
