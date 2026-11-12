@@ -1,3 +1,4 @@
+import "server-only";
 import { createHash } from "node:crypto";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 
