@@ -76,7 +76,47 @@ Open Drizzle Studio with:
 
 ## Status
 
-Foundation setup. CAP ingestion, domain model, persistence, authentication, approval workflows, and public acknowledgement flows are implemented in subsequent milestones.
+The database foundation, CAP parser, transactional ingestion service, review/publication repositories, and parser test suite are implemented. Authentication-provider integration, authenticated HTTP endpoints, and the public-facing alert/dashboard UI remain separate integration milestones.
+
+
+## CAP 1.2 ingestion
+
+The server-side CAP module is under `src/lib/cap/`:
+
+- `parser.ts` performs XML syntax checks, CAP namespace validation, field and enum validation, timezone-aware date validation, WGS 84 geometry checks, language validation, size limits, and SHA-256 source fingerprinting.
+- `ingest.ts` is a server-only transactional service for `Alert`, `Update`, and `Cancel` messages.
+- `fixtures/` contains a representative flood alert lifecycle in French and Arabic.
+- `parser.test.ts` contains parser regression tests, run by `pnpm test` and included in `pnpm check`.
+
+### Operational ingestion policy
+
+- Only `scope=Public` and `status=Actual` messages enter the operational alert workflow. Exercise, Test, System, and Draft messages can be parsed for validation but are not ingested for public operations.
+- `Alert` creates a draft alert and immutable source version. The workflow requires at least one `info` block before ingestion.
+- `Update` must reference the current version of an existing alert, carry a later `sent` timestamp, and include revised public guidance. It moves the alert back to review.
+- `Cancel` must reference the current version. It marks the alert cancelled and preserves the last known severity and timing metadata.
+- A superseding Update or Cancel revokes active publication links for prior versions in the same transaction. A replacement version must receive a new human approval.
+- Only the latest version with CAP status `Actual`, an active organization, and the latest approved review decision can be published.
+- CAP `Ack` and `Error` messages are parsed but are not inserted as public alert records.
+
+### Security boundaries
+
+- XML DTD and custom entity declarations are rejected. The parser does not dereference external resources or URLs found in CAP payloads.
+- CAP payload size is limited by `CAP_MAX_PAYLOAD_BYTES` (default: 1 MiB).
+- Original XML is stored unchanged alongside its parsed payload and SHA-256 digest.
+- Version allocation is serialized per alert; ingestion locks the active membership and organization during the write transaction.
+- Publication lifecycle constraints are enforced in PostgreSQL as well as in the application service. Revoked/expired links cannot be reactivated.
+- The parser and ingestion service are server-side modules. Do not expose ingestion through an unauthenticated route. An HTTP endpoint must derive the actor and organization from a trusted authentication session, never from client-supplied IDs.
+
+### CAP fixtures
+
+- `src/lib/cap/fixtures/flood-alert.xml` — initial French/Arabic flood warning.
+- `src/lib/cap/fixtures/flood-update.xml` — revised warning referencing the initial message.
+- `src/lib/cap/fixtures/flood-cancel.xml` — cancellation referencing the current update.
+
+Run the full local checks with:
+
+    pnpm check
+    pnpm build
 
 
 ## Neon database configuration
